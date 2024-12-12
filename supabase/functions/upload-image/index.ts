@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
-import Sharp from 'https://esm.sh/sharp@0.32.6'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -38,24 +37,8 @@ serve(async (req) => {
       throw new Error('Invalid user')
     }
 
-    // Read file as ArrayBuffer
-    const arrayBuffer = await file.arrayBuffer()
-    const buffer = new Uint8Array(arrayBuffer)
-
-    // Compress image using Sharp
-    const compressedImage = await Sharp(buffer)
-      .resize(1200, 1200, {
-        fit: 'inside',
-        withoutEnlargement: true
-      })
-      .jpeg({
-        quality: 80,
-        progressive: true
-      })
-      .toBuffer()
-
     // Generate unique filename
-    const fileExt = 'jpg' // We're converting everything to JPEG
+    const fileExt = file.name.split('.').pop()
     const fileName = `${crypto.randomUUID()}.${fileExt}`
     const filePath = `${user.id}/${fileName}`
 
@@ -63,11 +46,11 @@ serve(async (req) => {
     const r2Response = await fetch(`${Deno.env.get('R2_ENDPOINT_URL')}/${Deno.env.get('R2_BUCKET_NAME')}/${filePath}`, {
       method: 'PUT',
       headers: {
-        'Content-Type': 'image/jpeg',
+        'Content-Type': file.type,
         'x-amz-acl': 'public-read',
         'Authorization': `AWS4-HMAC-SHA256 Credential=${Deno.env.get('R2_ACCESS_KEY_ID')}`,
       },
-      body: compressedImage,
+      body: file,
     })
 
     if (!r2Response.ok) {
@@ -81,7 +64,7 @@ serve(async (req) => {
         user_id: user.id,
         file_path: filePath,
         title: file.name,
-        status: 'processing'
+        status: 'complete'
       })
 
     if (dbError) {
