@@ -1,4 +1,6 @@
+import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Image {
   id: string;
@@ -7,11 +9,30 @@ interface Image {
   status: 'processing' | 'complete' | 'error';
 }
 
-interface ImageGridProps {
-  images: Image[];
-}
+export function ImageGrid() {
+  const { data: images = [], isLoading } = useQuery({
+    queryKey: ['images'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('images')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-export function ImageGrid({ images }: ImageGridProps) {
+      if (error) throw error;
+
+      return data.map(image => ({
+        id: image.id,
+        url: `${import.meta.env.VITE_R2_PUBLIC_URL}/${image.file_path}`,
+        title: image.title,
+        status: image.status,
+      }));
+    },
+  });
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 animate-fade-in">
       {images.map((image) => (
