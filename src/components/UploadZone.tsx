@@ -5,6 +5,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { uploadImage } from '@/services/uploadService';
 import { UploadProgress } from './UploadProgress';
+import { useSession } from '@supabase/auth-helpers-react';
+import { Alert, AlertDescription } from './ui/alert';
 
 interface UploadProgress {
   total: number;
@@ -19,8 +21,18 @@ export function UploadZone() {
   const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const session = useSession();
 
   const processBatch = async (files: File[]) => {
+    if (!session) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to upload images",
+        variant: "destructive"
+      });
+      return;
+    }
+
     const maxBatchSize = 2000;
     if (files.length > maxBatchSize) {
       toast({
@@ -99,6 +111,16 @@ export function UploadZone() {
     const files = Array.from(e.target.files || []);
     await processBatch(files);
   };
+
+  if (!session) {
+    return (
+      <Alert>
+        <AlertDescription>
+          Please sign in to upload images
+        </AlertDescription>
+      </Alert>
+    );
+  }
 
   return (
     <div className="space-y-4">
