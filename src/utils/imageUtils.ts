@@ -9,7 +9,7 @@ const compressionOptions = {
 
 export const compressImage = async (file: File) => {
   try {
-    const compressedFile = await imageCompression(file, options);
+    const compressedFile = await imageCompression(file, compressionOptions);
     return new File([compressedFile], file.name, { type: compressedFile.type });
   } catch (error) {
     console.error('Compression error:', error);
