@@ -33,7 +33,7 @@ export function ImageGrid() {
         id: image.id,
         url: `${import.meta.env.VITE_R2_PUBLIC_URL}/${image.file_path}`,
         title: image.title,
-        status: image.status,
+        status: (image.status as 'processing' | 'complete' | 'error') || 'processing',
         metadata: image.metadata,
       }));
     },
