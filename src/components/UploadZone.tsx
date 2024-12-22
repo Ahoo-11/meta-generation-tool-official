@@ -60,6 +60,21 @@ export function UploadZone() {
       throw new Error(response.data.error || 'Upload failed');
     }
 
+    // Trigger metadata analysis
+    const imageUrl = `${import.meta.env.VITE_R2_PUBLIC_URL}/${response.data.filePath}`;
+    const analysisResponse = await supabase.functions.invoke('analyze-image', {
+      body: { imageUrl },
+    });
+
+    if (!analysisResponse.data.success) {
+      console.error('Metadata analysis failed:', analysisResponse.data.error);
+      toast({
+        title: "Metadata generation failed",
+        description: "The image was uploaded but we couldn't generate metadata for it.",
+        variant: "destructive"
+      });
+    }
+
     return response.data;
   };
 
