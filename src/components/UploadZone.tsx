@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Progress } from '@/components/ui/progress';
-import imageCompression from 'browser-image-compression';
 import { useQueryClient } from '@tanstack/react-query';
+import { uploadImage } from '@/services/uploadService';
+import { UploadProgress } from './UploadProgress';
 
 interface UploadProgress {
   total: number;
@@ -20,63 +19,6 @@ export function UploadZone() {
   const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-
-  const compressImage = async (file: File) => {
-    const options = {
-      maxSizeMB: 1,
-      maxWidthOrHeight: 384,
-      useWebWorker: true,
-      preserveExif: true,
-    };
-
-    try {
-      const compressedFile = await imageCompression(file, options);
-      return new File([compressedFile], file.name, { type: compressedFile.type });
-    } catch (error) {
-      console.error('Compression error:', error);
-      throw new Error('Failed to compress image');
-    }
-  };
-
-  const uploadFile = async (file: File) => {
-    if (!file.type.startsWith('image/')) {
-      throw new Error('Invalid file type. Please upload only image files.');
-    }
-
-    const compressedFile = await compressImage(file);
-    const formData = new FormData();
-    formData.append('file', compressedFile);
-
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token) {
-      throw new Error('Not authenticated');
-    }
-
-    const response = await supabase.functions.invoke('upload-image', {
-      body: formData,
-    });
-
-    if (!response.data.success) {
-      throw new Error(response.data.error || 'Upload failed');
-    }
-
-    // Trigger metadata analysis
-    const imageUrl = `${import.meta.env.VITE_R2_PUBLIC_URL}/${response.data.filePath}`;
-    const analysisResponse = await supabase.functions.invoke('analyze-image', {
-      body: { imageUrl },
-    });
-
-    if (!analysisResponse.data.success) {
-      console.error('Metadata analysis failed:', analysisResponse.data.error);
-      toast({
-        title: "Metadata generation failed",
-        description: "The image was uploaded but we couldn't generate metadata for it.",
-        variant: "destructive"
-      });
-    }
-
-    return response.data;
-  };
 
   const processBatch = async (files: File[]) => {
     const maxBatchSize = 2000;
@@ -100,7 +42,7 @@ export function UploadZone() {
     const results = [];
     for (const file of files) {
       try {
-        const result = await uploadFile(file);
+        const result = await uploadImage(file);
         results.push(result);
         setUploadProgress(prev => ({
           ...prev!,
@@ -114,6 +56,11 @@ export function UploadZone() {
           current: prev!.current + 1,
           failed: prev!.failed + 1
         }));
+        toast({
+          title: "Upload failed",
+          description: error.message,
+          variant: "destructive"
+        });
       }
     }
 
@@ -191,18 +138,7 @@ export function UploadZone() {
         </div>
       </label>
 
-      {uploadProgress && (
-        <div className="space-y-2">
-          <Progress value={(uploadProgress.current / uploadProgress.total) * 100} />
-          <div className="flex justify-between text-sm text-muted-foreground">
-            <span>Processing: {uploadProgress.current} / {uploadProgress.total}</span>
-            <span>
-              Success: {uploadProgress.processed} | 
-              Failed: {uploadProgress.failed}
-            </span>
-          </div>
-        </div>
-      )}
+      {uploadProgress && <UploadProgress {...uploadProgress} />}
     </div>
   );
 }
