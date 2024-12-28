@@ -42,16 +42,34 @@ serve(async (req) => {
     const fileName = `${crypto.randomUUID()}.${fileExt}`
     const filePath = `${user.id}/${fileName}`
 
-    // Upload to R2
-    const r2Response = await fetch(`${Deno.env.get('R2_ENDPOINT_URL')}/${Deno.env.get('R2_BUCKET_NAME')}/${filePath}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': file.type,
-        'x-amz-acl': 'public-read',
-        'Authorization': `AWS4-HMAC-SHA256 Credential=${Deno.env.get('R2_ACCESS_KEY_ID')}`,
-      },
-      body: file,
+    // Get file data as ArrayBuffer
+    const fileData = await file.arrayBuffer()
+
+    // Create AWS signature headers
+    const date = new Date().toISOString().split('T')[0]
+    const amzDate = date.replace(/-/g, '')
+    
+    const r2Headers = new Headers({
+      'Content-Type': file.type,
+      'x-amz-date': amzDate,
+      'x-amz-acl': 'public-read',
+      'Authorization': `AWS4-HMAC-SHA256 Credential=${Deno.env.get('R2_ACCESS_KEY_ID')}/${date}/auto/s3/aws4_request`,
+      'x-amz-content-sha256': 'UNSIGNED-PAYLOAD'
     })
+
+    console.log('Uploading to R2 with URL:', `${Deno.env.get('R2_ENDPOINT_URL')}/${Deno.env.get('R2_BUCKET_NAME')}/${filePath}`)
+    
+    // Upload to R2
+    const r2Response = await fetch(
+      `${Deno.env.get('R2_ENDPOINT_URL')}/${Deno.env.get('R2_BUCKET_NAME')}/${filePath}`,
+      {
+        method: 'PUT',
+        headers: r2Headers,
+        body: fileData,
+      }
+    )
+
+    console.log('R2 Response:', r2Response.status, await r2Response.text())
 
     if (!r2Response.ok) {
       throw new Error('Failed to upload to R2')
