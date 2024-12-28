@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
-import { HmacSha256 } from "https://deno.land/std@0.168.0/hash/sha256.ts"
-import { encode as hexEncode } from "https://deno.land/std@0.168.0/encoding/hex.ts"
+import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
+import { encodeHex } from "https://deno.land/std@0.168.0/encoding/hex.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,9 +9,16 @@ const corsHeaders = {
 }
 
 async function hmacSha256(key: string | ArrayBuffer, message: string): Promise<ArrayBuffer> {
-  const hmac = new HmacSha256(key);
-  hmac.update(message);
-  return hmac.arrayBuffer();
+  const keyData = key instanceof ArrayBuffer ? key : new TextEncoder().encode(key);
+  const messageData = new TextEncoder().encode(message);
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    keyData,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  return await crypto.subtle.sign("HMAC", cryptoKey, messageData);
 }
 
 async function getSignatureKey(key: string, dateStamp: string, regionName: string, serviceName: string): Promise<ArrayBuffer> {
@@ -95,11 +102,11 @@ serve(async (req) => {
     // Create string to sign
     const algorithm = 'AWS4-HMAC-SHA256'
     const credentialScope = `${dateStamp}/${region}/${service}/aws4_request`
-    const stringToSign = [algorithm, amzdate, credentialScope, new HmacSha256().update(canonicalRequest).hex()].join('\n')
+    const stringToSign = [algorithm, amzdate, credentialScope, encodeHex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonicalRequest)))].join('\n')
 
     // Calculate signature
     const signingKey = await getSignatureKey(secretKey, dateStamp, region, service)
-    const signature = hexEncode(new Uint8Array(await hmacSha256(signingKey, stringToSign)))
+    const signature = encodeHex(new Uint8Array(await hmacSha256(signingKey, stringToSign)))
 
     // Create authorization header
     const authorizationHeader = `${algorithm} Credential=${accessKey}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`
