@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { useSession } from '@supabase/auth-helpers-react';
@@ -6,6 +7,7 @@ interface Image {
   id: string;
   url: string;
   title: string;
+  userId: string; // Added this line to match our schema
 }
 
 export function ImageGrid() {
