@@ -4,9 +4,11 @@ import { ThemeSupa } from '@supabase/auth-ui-shared'
 import { supabase } from '@/integrations/supabase/client'
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useToast } from '@/hooks/use-toast'
 
 const AuthPage = () => {
   const navigate = useNavigate()
+  const { toast } = useToast()
 
   useEffect(() => {
     // Check if user is already logged in
@@ -17,14 +19,22 @@ const AuthPage = () => {
     })
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session) {
         navigate('/')
+      }
+      
+      // Handle auth errors
+      if (event === 'USER_DELETED' || event === 'SIGNED_OUT') {
+        toast({
+          title: "Signed out",
+          description: "You have been signed out successfully"
+        })
       }
     })
 
     return () => subscription.unsubscribe()
-  }, [navigate])
+  }, [navigate, toast])
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -40,6 +50,16 @@ const AuthPage = () => {
           theme="default"
           providers={[]}
           redirectTo={window.location.origin}
+          onError={(error) => {
+            toast({
+              title: "Authentication Error",
+              description: error.message,
+              variant: "destructive"
+            })
+          }}
+          magicLink={false}
+          showLinks={false}
+          view="sign_in"
         />
       </div>
     </div>
