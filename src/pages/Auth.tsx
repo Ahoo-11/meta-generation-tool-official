@@ -25,7 +25,7 @@ const AuthPage = () => {
       }
       
       // Handle auth errors
-      if (event === 'USER_DELETED' || event === 'SIGNED_OUT') {
+      if (event === 'SIGNED_OUT') {
         toast({
           title: "Signed out",
           description: "You have been signed out successfully"
@@ -50,15 +50,7 @@ const AuthPage = () => {
           theme="default"
           providers={[]}
           redirectTo={window.location.origin}
-          onError={(error) => {
-            toast({
-              title: "Authentication Error",
-              description: error.message,
-              variant: "destructive"
-            })
-          }}
           magicLink={false}
-          showLinks={false}
           view="sign_in"
         />
       </div>
