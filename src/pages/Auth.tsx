@@ -21,14 +21,26 @@ const AuthPage = () => {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
+        toast({
+          title: "Success",
+          description: "Successfully signed in!"
+        })
         navigate('/')
       }
       
-      // Handle auth errors
       if (event === 'SIGNED_OUT') {
         toast({
           title: "Signed out",
           description: "You have been signed out successfully"
+        })
+      }
+
+      // Handle auth errors
+      if (event === 'USER_DELETED') {
+        toast({
+          title: "Error",
+          description: "User account has been deleted",
+          variant: "destructive"
         })
       }
     })
@@ -50,13 +62,26 @@ const AuthPage = () => {
             theme: ThemeSupa,
             style: {
               button: { background: 'white', color: 'black' },
+              anchor: { color: 'gray' },
+              divider: { background: 'gray' },
+              message: { color: 'gray' }
             }
           }}
           theme="default"
           providers={['google']}
-          redirectTo="https://pixelkeywording.com"
+          redirectTo={window.location.origin}
           magicLink={false}
           view="sign_in"
+          localization={{
+            variables: {
+              sign_in: {
+                email_label: 'Email',
+                password_label: 'Password',
+                button_label: 'Sign in',
+                loading_button_label: 'Signing in...',
+              }
+            }
+          }}
         />
       </div>
     </div>
