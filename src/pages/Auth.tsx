@@ -46,10 +46,15 @@ const AuthPage = () => {
         
         <Auth
           supabaseClient={supabase}
-          appearance={{ theme: ThemeSupa }}
+          appearance={{
+            theme: ThemeSupa,
+            style: {
+              button: { background: 'white', color: 'black' },
+            }
+          }}
           theme="default"
-          providers={[]}
-          redirectTo={window.location.origin}
+          providers={['google']}
+          redirectTo="https://pixelkeywording.com"
           magicLink={false}
           view="sign_in"
         />
