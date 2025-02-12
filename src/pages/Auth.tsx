@@ -35,11 +35,18 @@ const AuthPage = () => {
         })
       }
 
-      // Handle auth errors
-      if (event === 'USER_DELETED') {
+      // Handle other auth events
+      if (event === 'USER_UPDATED') {
         toast({
-          title: "Error",
-          description: "User account has been deleted",
+          title: "Profile Updated",
+          description: "Your profile has been updated successfully"
+        })
+      }
+
+      if (event === 'PASSWORD_RECOVERY') {
+        toast({
+          title: "Password Recovery",
+          description: "Password recovery email has been sent",
           variant: "destructive"
         })
       }
