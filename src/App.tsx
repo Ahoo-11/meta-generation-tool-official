@@ -6,6 +6,9 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import Dashboard from "./pages/Dashboard"
 import AuthPage from "./pages/Auth"
 import LandingPage from "./pages/landing"
+import Terms from "./pages/legal/Terms"
+import Privacy from "./pages/legal/Privacy"
+import Refund from "./pages/legal/Refund"
 import { useSession, useSupabaseClient } from '@supabase/auth-helpers-react'
 import { useEffect, useState } from "react"
 import { ThemeProvider } from "@/components/theme/ThemeProvider"
@@ -78,6 +81,9 @@ const App = () => {
               } 
             />
             <Route path="/auth" element={<AuthPage />} />
+            <Route path="/legal/terms" element={<Terms />} />
+            <Route path="/legal/privacy" element={<Privacy />} />
+            <Route path="/legal/refund" element={<Refund />} />
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
