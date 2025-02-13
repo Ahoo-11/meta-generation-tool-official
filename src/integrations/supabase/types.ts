@@ -49,6 +49,7 @@ export type Database = {
           credits: number
           email: string
           id: string
+          theme_preference: string | null
           updated_at: string
           username: string | null
         }
@@ -58,6 +59,7 @@ export type Database = {
           credits?: number
           email: string
           id: string
+          theme_preference?: string | null
           updated_at?: string
           username?: string | null
         }
@@ -67,6 +69,7 @@ export type Database = {
           credits?: number
           email?: string
           id?: string
+          theme_preference?: string | null
           updated_at?: string
           username?: string | null
         }

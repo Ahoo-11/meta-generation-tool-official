@@ -7,6 +7,8 @@ import Index from "./pages/Index"
 import AuthPage from "./pages/Auth"
 import { useSession, useSupabaseClient } from '@supabase/auth-helpers-react'
 import { useEffect, useState } from "react"
+import { ThemeProvider } from "@/components/theme/ThemeProvider"
+import { AppSidebar } from "@/components/layout/AppSidebar"
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const session = useSession()
@@ -47,28 +49,37 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/auth" replace />
   }
 
-  return <>{children}</>
+  return (
+    <div className="flex">
+      <AppSidebar />
+      <main className="flex-1">
+        {children}
+      </main>
+    </div>
+  )
 }
 
 const App = () => {
   return (
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route 
-            path="/" 
-            element={
-              <ProtectedRoute>
-                <Index />
-              </ProtectedRoute>
-            } 
-          />
-          <Route path="/auth" element={<AuthPage />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
+    <ThemeProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route 
+              path="/" 
+              element={
+                <ProtectedRoute>
+                  <Index />
+                </ProtectedRoute>
+              } 
+            />
+            <Route path="/auth" element={<AuthPage />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </ThemeProvider>
   )
 }
 
