@@ -3,8 +3,9 @@ import { Toaster } from "@/components/ui/toaster"
 import { Toaster as Sonner } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
-import Index from "./pages/Index"
+import Dashboard from "./pages/Dashboard"
 import AuthPage from "./pages/Auth"
+import LandingPage from "./pages/landing"
 import { useSession, useSupabaseClient } from '@supabase/auth-helpers-react'
 import { useEffect, useState } from "react"
 import { ThemeProvider } from "@/components/theme/ThemeProvider"
@@ -67,11 +68,12 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <Routes>
+            <Route path="/" element={<LandingPage />} />
             <Route 
-              path="/" 
+              path="/app" 
               element={
                 <ProtectedRoute>
-                  <Index />
+                  <Dashboard />
                 </ProtectedRoute>
               } 
             />
