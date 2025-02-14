@@ -157,25 +157,25 @@ const LandingPage = () => {
               <thead>
                 <tr className="border-b">
                   <th className="p-4 text-left">Features</th>
-                  <th className="p-4 text-center">Starter</th>
-                  <th className="p-4 text-center">Pro</th>
-                  <th className="p-4 text-center">Enterprise</th>
+                  <th className="p-4 text-center">Free</th>
+                  <th className="p-4 text-center">Basic</th>
+                  <th className="p-4 text-center">Unlimited</th>
                 </tr>
               </thead>
               <tbody>
                 {[
-                  { feature: "Monthly Credits", starter: "100", pro: "500", enterprise: "Unlimited" },
-                  { feature: "Keyword Suggestions", starter: "Basic", pro: "Advanced", enterprise: "Custom" },
-                  { feature: "Bulk Processing", starter: "❌", pro: "✅", enterprise: "✅" },
-                  { feature: "API Access", starter: "❌", pro: "❌", enterprise: "✅" },
-                  { feature: "Custom Model Training", starter: "❌", pro: "❌", enterprise: "✅" },
-                  { feature: "Support", starter: "Email", pro: "Priority", enterprise: "24/7 Dedicated" }
+                  { feature: "Monthly Credits", free: "150", basic: "5,000", unlimited: "Unlimited" },
+                  { feature: "Video Processing", free: "❌", basic: "✅", unlimited: "✅" },
+                  { feature: "Bulk Processing", free: "❌", basic: "✅", unlimited: "✅" },
+                  { feature: "API Access", free: "❌", basic: "❌", unlimited: "✅" },
+                  { feature: "Priority Support", free: "❌", basic: "✅", unlimited: "✅" },
+                  { feature: "Price", free: "Free", basic: "$20/mo", unlimited: "$30/mo" }
                 ].map((row, i) => (
                   <tr key={i} className="border-b">
                     <td className="p-4">{row.feature}</td>
-                    <td className="p-4 text-center">{row.starter}</td>
-                    <td className="p-4 text-center">{row.pro}</td>
-                    <td className="p-4 text-center">{row.enterprise}</td>
+                    <td className="p-4 text-center">{row.free}</td>
+                    <td className="p-4 text-center">{row.basic}</td>
+                    <td className="p-4 text-center">{row.unlimited}</td>
                   </tr>
                 ))}
               </tbody>
@@ -268,10 +268,10 @@ const LandingPage = () => {
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 items-center justify-items-center">
             {[
-              "256-bit Encryption",
-              "GDPR Compliant",
-              "SOC 2 Certified",
-              "99.9% Uptime"
+              "Secure Authentication",
+              "Data Privacy",
+              "Fast Processing",
+              "24/7 Support"
             ].map((badge, index) => (
               <div key={index} className="flex items-center gap-2 text-sm font-medium">
                 <Check className="h-4 w-4 text-primary" />

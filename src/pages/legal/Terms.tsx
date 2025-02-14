@@ -21,48 +21,88 @@ const Terms = () => {
         <div className="prose prose-gray dark:prose-invert max-w-none">
           <section className="mb-8">
             <h2 className="text-2xl font-semibold mb-4">1. Acceptance of Terms</h2>
-            <p>By accessing and using Pixel Keywording ("the Service"), you agree to be bound by these Terms of Service ("Terms"), all applicable laws and regulations, and agree that you are responsible for compliance with any applicable local laws.</p>
+            <p>By accessing and using Pixel Keywording ("the Service"), you agree to be bound by these Terms of Service. If you do not agree to these Terms, please do not use the Service.</p>
           </section>
 
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold mb-4">2. Use License</h2>
-            <p>Upon purchasing credits or using our service, we grant you a limited, non-exclusive, non-transferable license to use our AI-powered image keywording service for your personal or business needs.</p>
+            <h2 className="text-2xl font-semibold mb-4">2. Service Description</h2>
+            <p>Pixel Keywording is an AI-powered tool that generates metadata and keywords for images and videos. The Service is provided on an "as is" and "as available" basis.</p>
+          </section>
+
+          <section className="mb-8">
+            <h2 className="text-2xl font-semibold mb-4">3. Account Registration</h2>
+            <p>You must register using Google Authentication to access the Service. You are responsible for maintaining the confidentiality of your account and agree to notify us immediately of any unauthorized use.</p>
             <ul className="list-disc pl-6 mt-4 space-y-2">
-              <li>Each credit allows for one image processing</li>
-              <li>Credits are non-transferable and non-refundable except as specified in our Refund Policy</li>
-              <li>You maintain all rights to your uploaded images</li>
+              <li>Account sharing or reselling is prohibited</li>
+              <li>We reserve the right to suspend suspicious accounts</li>
+              <li>One account per user</li>
             </ul>
           </section>
 
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold mb-4">3. Service Usage</h2>
-            <p>You agree not to:</p>
-            <ul className="list-disc pl-6 mt-4 space-y-2">
-              <li>Use the service for any unlawful purpose</li>
-              <li>Upload any content that infringes on intellectual property rights</li>
-              <li>Attempt to reverse engineer or extract the source code of our service</li>
-              <li>Transfer or sell your account or credits to others</li>
+            <h2 className="text-2xl font-semibold mb-4">4. Subscription Plans and Credits</h2>
+            <h3 className="text-xl font-semibold mt-4">Free Plan</h3>
+            <ul className="list-disc pl-6 mt-2 space-y-2">
+              <li>150 credits per month</li>
+              <li>Credits refresh monthly</li>
+              <li>No credit rollover</li>
+            </ul>
+
+            <h3 className="text-xl font-semibold mt-4">Basic Plan - $20/month</h3>
+            <ul className="list-disc pl-6 mt-2 space-y-2">
+              <li>5,000 credits per month</li>
+              <li>Credits expire at billing cycle end</li>
+              <li>Includes video processing</li>
+            </ul>
+
+            <h3 className="text-xl font-semibold mt-4">Unlimited Plan - $30/month</h3>
+            <ul className="list-disc pl-6 mt-2 space-y-2">
+              <li>Unlimited processing</li>
+              <li>Subject to fair usage policy</li>
+            </ul>
+
+            <h3 className="text-xl font-semibold mt-4">Additional Credits</h3>
+            <ul className="list-disc pl-6 mt-2 space-y-2">
+              <li>$5 for 1,000 credits</li>
+              <li>No expiration</li>
             </ul>
           </section>
 
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold mb-4">4. Payment Terms</h2>
-            <p>All payments are processed securely through Paddle. Credit purchases are final and non-refundable except as specified in our Refund Policy.</p>
+            <h2 className="text-2xl font-semibold mb-4">5. Payment Terms</h2>
+            <p>All payments are processed through Paddle.com in USD. Subscriptions automatically renew unless cancelled. Upon cancellation, service remains active until the end of the billing cycle.</p>
           </section>
 
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold mb-4">5. Privacy</h2>
-            <p>Your use of the Service is also governed by our Privacy Policy. Please review our Privacy Policy to understand our practices.</p>
+            <h2 className="text-2xl font-semibold mb-4">6. Service Availability</h2>
+            <p>We strive to maintain consistent service availability and include automatic retry mechanisms for failed processing. While we aim for reliable service, we do not guarantee 100% accuracy of AI-generated results.</p>
           </section>
 
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold mb-4">6. Service Modifications</h2>
-            <p>We reserve the right to modify or discontinue the Service at any time, with or without notice. We shall not be liable to you or any third party for any modification, suspension, or discontinuance of the Service.</p>
+            <h2 className="text-2xl font-semibold mb-4">7. Acceptable Use</h2>
+            <p>The following types of content are prohibited:</p>
+            <ul className="list-disc pl-6 mt-4 space-y-2">
+              <li>Adult or explicit content</li>
+              <li>Violent or graphic content</li>
+              <li>Hateful or discriminatory content</li>
+              <li>Content promoting illegal activities</li>
+              <li>Misleading or fraudulent content</li>
+            </ul>
+          </section>
+
+          <section className="mb-8">
+            <h2 className="text-2xl font-semibold mb-4">8. Data and Privacy</h2>
+            <p>We store basic usage statistics visible in your account dashboard. Account deletion removes all associated data. We do not store processed image metadata or titles. Uploaded content remains your property.</p>
+          </section>
+
+          <section className="mb-8">
+            <h2 className="text-2xl font-semibold mb-4">9. Contact</h2>
+            <p>For any questions regarding these Terms, please contact us at support@pixelkeywording.com</p>
           </section>
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default Terms
+export default Terms;
