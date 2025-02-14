@@ -1,70 +1,124 @@
 
-import { ArrowLeft } from "lucide-react"
-import { Link } from "react-router-dom"
-import { Button } from "@/components/ui/button"
-
 const Privacy = () => {
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-4xl mx-auto px-4 py-12">
-        <div className="mb-8">
-          <Link to="/">
-            <Button variant="ghost" size="sm" className="mb-4">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Home
-            </Button>
-          </Link>
-          <h1 className="text-4xl font-bold mb-4">Privacy Policy</h1>
-          <p className="text-muted-foreground">Last updated: {new Date().toLocaleDateString()}</p>
-        </div>
+    <div className="min-h-screen bg-background p-4 md:p-8">
+      <div className="max-w-4xl mx-auto space-y-8">
+        <h1 className="text-4xl font-bold">Privacy Policy</h1>
+        <p className="text-muted-foreground">Last Updated: February 14, 2025</p>
 
-        <div className="prose prose-gray dark:prose-invert max-w-none">
-          <section className="mb-8">
-            <h2 className="text-2xl font-semibold mb-4">1. Information We Collect</h2>
-            <p>We collect information that you provide directly to us:</p>
-            <ul className="list-disc pl-6 mt-4 space-y-2">
-              <li>Account information (email, name)</li>
-              <li>Payment information (processed securely by Paddle)</li>
-              <li>Images you upload for processing</li>
-              <li>Usage data and service interaction</li>
+        <section className="space-y-4">
+          <h2 className="text-2xl font-semibold">Introduction</h2>
+          <p>
+            This Privacy Policy explains how Pixel Keywording ("we," "us," or "our") collects, uses, and protects your information when you use our service at pixelkeywording.com. We are committed to protecting your privacy and handling your data in a transparent manner.
+          </p>
+        </section>
+
+        <section className="space-y-4">
+          <h2 className="text-2xl font-semibold">Information We Collect</h2>
+          
+          <div className="space-y-4">
+            <h3 className="text-xl font-medium">Account Information</h3>
+            <ul className="list-disc pl-6 space-y-2">
+              <li>Email address (through Google Authentication)</li>
+              <li>Basic profile information from Google Authentication</li>
+              <li>Account preferences and settings</li>
             </ul>
-          </section>
+          </div>
 
-          <section className="mb-8">
-            <h2 className="text-2xl font-semibold mb-4">2. How We Use Your Information</h2>
-            <p>We use the collected information for:</p>
-            <ul className="list-disc pl-6 mt-4 space-y-2">
-              <li>Providing and improving our services</li>
-              <li>Processing your payments</li>
-              <li>Communicating with you about your account</li>
-              <li>Analyzing service usage patterns</li>
+          <div className="space-y-4">
+            <h3 className="text-xl font-medium">Website Analytics</h3>
+            <p>We use Google Analytics to collect anonymous data about website usage, including:</p>
+            <ul className="list-disc pl-6 space-y-2">
+              <li>Page visit statistics</li>
+              <li>Visitor geographic locations</li>
+              <li>User retention metrics</li>
+              <li>Website performance data</li>
             </ul>
-          </section>
+            <p>This data helps us improve our website experience and does not include personal information.</p>
+          </div>
 
-          <section className="mb-8">
-            <h2 className="text-2xl font-semibold mb-4">3. Data Security</h2>
-            <p>We implement appropriate security measures to protect your personal information. Your images and data are encrypted during transmission and storage.</p>
-          </section>
-
-          <section className="mb-8">
-            <h2 className="text-2xl font-semibold mb-4">4. Data Retention</h2>
-            <p>We retain your personal information only for as long as necessary to provide you with our services and as described in this Privacy Policy.</p>
-          </section>
-
-          <section className="mb-8">
-            <h2 className="text-2xl font-semibold mb-4">5. Your Rights</h2>
-            <p>You have the right to:</p>
-            <ul className="list-disc pl-6 mt-4 space-y-2">
-              <li>Access your personal information</li>
-              <li>Correct inaccurate data</li>
-              <li>Request deletion of your data</li>
-              <li>Export your data</li>
+          <div className="space-y-4">
+            <h3 className="text-xl font-medium">Service Data</h3>
+            <ul className="list-disc pl-6 space-y-2">
+              <li>Credit balance and usage history</li>
+              <li>Service interaction logs</li>
+              <li>Technical performance metrics</li>
+              <li>Error logs for service improvement</li>
             </ul>
-          </section>
-        </div>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-xl font-medium">Payment Information</h3>
+            <ul className="list-disc pl-6 space-y-2">
+              <li>Payment processing is handled entirely by Paddle.com</li>
+              <li>We do not store your payment information</li>
+              <li>Please refer to Paddle's privacy policy for payment data handling</li>
+            </ul>
+          </div>
+        </section>
+
+        <section className="space-y-4">
+          <h2 className="text-2xl font-semibold">How We Process Your Data</h2>
+          
+          <div className="space-y-4">
+            <h3 className="text-xl font-medium">Cloud Processing</h3>
+            <ul className="list-disc pl-6 space-y-2">
+              <li>Content is processed using secure cloud AI infrastructure</li>
+              <li>All data transmission uses enterprise-grade encryption</li>
+              <li>Processing results are temporary and cleared after completion</li>
+              <li>We do not retain or use your content for AI training</li>
+            </ul>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-xl font-medium">Data Storage</h3>
+            <ul className="list-disc pl-6 space-y-2">
+              <li>Account information is stored in secure cloud databases</li>
+              <li>Credit system data is maintained for account management</li>
+              <li>Service logs are retained for technical support</li>
+              <li>All stored data is encrypted at rest</li>
+            </ul>
+          </div>
+        </section>
+
+        <section className="space-y-4">
+          <h2 className="text-2xl font-semibold">Your Rights</h2>
+          <p>You have the right to:</p>
+          <ul className="list-disc pl-6 space-y-2">
+            <li>Access your personal data</li>
+            <li>Request corrections to your data</li>
+            <li>Request deletion of your data</li>
+            <li>Restrict the processing of your data</li>
+            <li>Receive a copy of your data</li>
+          </ul>
+          <p>To exercise these rights, contact us at support@pixelkeywording.com</p>
+        </section>
+
+        <section className="space-y-4">
+          <h2 className="text-2xl font-semibold">Data Retention</h2>
+          <ul className="list-disc pl-6 space-y-2">
+            <li>Account data is retained until account deletion</li>
+            <li>Usage statistics are maintained while the account is active</li>
+            <li>Processed content is not retained after processing is complete</li>
+          </ul>
+        </section>
+
+        <section className="space-y-4">
+          <h2 className="text-2xl font-semibold">Changes to This Policy</h2>
+          <p>
+            We may update this Privacy Policy occasionally. We will notify you of any material changes by posting the new Privacy Policy on this page.
+          </p>
+        </section>
+
+        <section className="space-y-4">
+          <h2 className="text-2xl font-semibold">Contact Us</h2>
+          <p>
+            If you have any questions about this Privacy Policy, please contact us at: support@pixelkeywording.com
+          </p>
+        </section>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default Privacy
+export default Privacy;
