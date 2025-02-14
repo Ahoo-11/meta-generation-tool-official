@@ -1,9 +1,23 @@
 
+import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
+
 const Privacy = () => {
+  const navigate = useNavigate();
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-8">
-        <h1 className="text-4xl font-bold">Privacy Policy</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-4xl font-bold">Privacy Policy</h1>
+          <Button 
+            variant="outline"
+            onClick={() => navigate("/")}
+            className="flex items-center gap-2"
+          >
+            Back to Home
+          </Button>
+        </div>
         <p className="text-muted-foreground">Last Updated: February 14, 2025</p>
 
         <section className="space-y-4">
