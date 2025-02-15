@@ -1,11 +1,8 @@
-
-import { ArrowLeft } from "lucide-react"
-import { Link } from "react-router-dom"
-import { Button } from "@/components/ui/button"
-
+import { ArrowLeft } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 const Refund = () => {
-  return (
-    <div className="min-h-screen bg-background">
+  return <div className="min-h-screen bg-background">
       <div className="max-w-4xl mx-auto px-4 py-12">
         <div className="mb-8">
           <Link to="/">
@@ -54,7 +51,7 @@ const Refund = () => {
             <h2 className="text-2xl font-semibold mb-4">2. Credit System</h2>
             <ul className="list-disc pl-6 space-y-2">
               <li>1 credit = 1 image or video process</li>
-              <li>Credits refresh at the start of each billing cycle</li>
+              <li>Credits refresh at the start of each billing cycle  </li>
               <li>Supports common image formats (JPEG, PNG) and video (MP4)</li>
               <li>No rollover of unused credits</li>
             </ul>
@@ -63,7 +60,7 @@ const Refund = () => {
           <section className="mb-8">
             <h2 className="text-2xl font-semibold mb-4">3. Payment Terms</h2>
             <ul className="list-disc pl-6 space-y-2">
-              <li>All payments are processed through Paddle.com</li>
+              <li>All payments are processed securely through Paddle.com</li>
               <li>Prices are in USD</li>
               <li>No additional fees beyond subscription costs</li>
               <li>Payment confirmation emails are sent automatically</li>
@@ -136,8 +133,6 @@ const Refund = () => {
           </section>
         </div>
       </div>
-    </div>
-  )
-}
-
-export default Refund
+    </div>;
+};
+export default Refund;
