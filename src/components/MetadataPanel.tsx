@@ -1,13 +1,9 @@
-import { X } from 'lucide-react';
 
-interface Metadata {
-  title: string;
-  keywords: string[];
-  category: string;
-}
+import { X } from 'lucide-react';
+import { ImageMetadata } from '@/config/imageAnalysis';
 
 interface MetadataPanelProps {
-  metadata: Metadata | null;
+  metadata: ImageMetadata | null;
   onClose: () => void;
 }
 
@@ -33,6 +29,11 @@ export function MetadataPanel({ metadata, onClose }: MetadataPanelProps) {
             <p className="mt-1 text-foreground">{metadata.title}</p>
           </div>
           
+          <div>
+            <label className="text-sm font-medium text-muted-foreground">Description</label>
+            <p className="mt-1 text-foreground">{metadata.description}</p>
+          </div>
+
           <div>
             <label className="text-sm font-medium text-muted-foreground">Category</label>
             <p className="mt-1 text-foreground">{metadata.category}</p>

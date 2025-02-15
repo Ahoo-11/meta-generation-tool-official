@@ -1,5 +1,6 @@
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { ImageMetadata, systemPrompt } from "@/config/imageAnalysis";
 
 const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
 
@@ -19,16 +20,20 @@ export const analyzeImages = async (images: GeminiImageInput[]) => {
       }
     }));
 
-    const prompt = "Generate metadata for these images including: subject matter, style, mood, colors, and any notable features.";
-    
-    const result = await model.generateContent([prompt, ...imageParts]);
+    const result = await model.generateContent([systemPrompt, ...imageParts]);
     const response = await result.response;
     const text = response.text();
 
-    return {
-      success: true,
-      metadata: text
-    };
+    try {
+      const metadata = JSON.parse(text) as ImageMetadata;
+      return {
+        success: true,
+        metadata
+      };
+    } catch (parseError) {
+      console.error('Failed to parse Gemini response:', parseError);
+      throw new Error('Failed to parse metadata from AI response');
+    }
   } catch (error) {
     console.error('Gemini API error:', error);
     throw error;
