@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -5,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useSession } from '@supabase/auth-helpers-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { UploadProgress } from './UploadProgress';
+import { analyzeImages } from '@/services/geminiService';
 
 interface UploadProgress {
   total: number;
@@ -19,45 +21,6 @@ export function UploadZone() {
   const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
   const { toast } = useToast();
   const session = useSession();
-
-  const uploadToR2 = async (file: File) => {
-    const endpoint = import.meta.env.VITE_R2_ENDPOINT_URL;
-    const bucket = import.meta.env.VITE_R2_BUCKET_NAME;
-    const accessKeyId = import.meta.env.VITE_R2_ACCESS_KEY_ID;
-    const secretAccessKey = import.meta.env.VITE_R2_SECRET_ACCESS_KEY;
-
-    if (!endpoint || !bucket || !accessKeyId || !secretAccessKey) {
-      throw new Error('R2 configuration missing');
-    }
-
-    const fileName = `${session?.user?.id}/${crypto.randomUUID()}-${file.name}`;
-    const url = `${endpoint}/${bucket}/${fileName}`;
-
-    // Create a date string for AWS signature
-    const date = new Date().toISOString().replace(/[:-]|\.\d{3}/g, '');
-    const dateStamp = date.slice(0, 8);
-
-    // AWS S3/R2 signing process would go here
-    // For now, we'll use public bucket permissions
-    
-    const response = await fetch(url, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': file.type,
-        'x-amz-acl': 'public-read',
-      },
-      body: file,
-    });
-
-    if (!response.ok) {
-      throw new Error('Upload failed');
-    }
-
-    return {
-      url,
-      fileName,
-    };
-  };
 
   const processBatch = async (files: File[]) => {
     if (!session) {
@@ -87,48 +50,65 @@ export function UploadZone() {
       failed: 0
     });
 
-    const results = [];
     for (const file of files) {
       try {
-        const result = await uploadToR2(file);
+        // Convert file to base64
+        const reader = new FileReader();
+        const base64Promise = new Promise((resolve, reject) => {
+          reader.onload = () => {
+            const base64 = (reader.result as string).split(',')[1];
+            resolve(base64);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+
+        const base64Data = await base64Promise;
         
+        // Process with Gemini
+        const result = await analyzeImages([{
+          base64Data: base64Data as string,
+          mimeType: file.type
+        }]);
+
         // Store image info in localStorage
         const storedImages = JSON.parse(localStorage.getItem('userImages') || '[]');
         storedImages.push({
           id: crypto.randomUUID(),
-          url: result.url,
+          url: URL.createObjectURL(file),
           title: file.name,
-          userId: session.user.id
+          userId: session.user.id,
+          metadata: result.metadata
         });
         localStorage.setItem('userImages', JSON.stringify(storedImages));
         
-        results.push(result);
         setUploadProgress(prev => ({
           ...prev!,
           current: prev!.current + 1,
           processed: prev!.processed + 1
         }));
+
       } catch (error) {
-        console.error('Upload error:', error);
+        console.error('Processing error:', error);
         setUploadProgress(prev => ({
           ...prev!,
           current: prev!.current + 1,
           failed: prev!.failed + 1
         }));
         toast({
-          title: "Upload failed",
+          title: "Processing failed",
           description: error.message,
           variant: "destructive"
         });
       }
     }
 
-    const successCount = results.length;
-    const failedCount = files.length - successCount;
+    const successCount = uploadProgress?.processed || 0;
+    const failedCount = uploadProgress?.failed || 0;
 
     toast({
-      title: "Batch upload complete",
-      description: `Successfully uploaded ${successCount} images${failedCount > 0 ? `, ${failedCount} failed` : ''}`,
+      title: "Batch processing complete",
+      description: `Successfully processed ${successCount} images${failedCount > 0 ? `, ${failedCount} failed` : ''}`,
       variant: successCount > 0 ? "default" : "destructive"
     });
 
@@ -197,7 +177,7 @@ export function UploadZone() {
         </div>
         <div className="text-center">
           <h3 className="text-lg font-semibold">
-            {isUploading ? 'Uploading...' : 'Drag and drop your images'}
+            {isUploading ? 'Processing...' : 'Drag and drop your images'}
           </h3>
           <p className="text-sm text-muted-foreground mt-1">
             {isUploading ? 'Please wait while we process your images' : 'or click to browse (up to 2000 images)'}
