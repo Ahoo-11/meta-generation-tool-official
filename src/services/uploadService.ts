@@ -1,3 +1,4 @@
+
 import { validateImageFile } from '@/utils/imageUtils';
 import { analyzeImages } from './geminiService';
 
@@ -11,7 +12,7 @@ interface ProcessResult {
   fileName: string;
   base64Data: string;
   mimeType: string;
-  metadata?: string;
+  metadata?: any; // Changed from string to any to accept the new metadata structure
   error?: string;
   success: boolean;
 }
@@ -92,7 +93,7 @@ export const processImages = async (
             successfulImages.forEach(img => {
               results.push({
                 ...img,
-                metadata: analysisResult.metadata
+                metadata: analysisResult.metadata // This is now the structured metadata
               });
             });
           }
