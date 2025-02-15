@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import "https://deno.land/x/xhr@0.1.0/mod.ts"
 
@@ -24,7 +25,7 @@ serve(async (req) => {
     const imageData = await imageResponse.arrayBuffer()
     const base64Image = btoa(String.fromCharCode(...new Uint8Array(imageData)))
 
-    const response = await fetch('https://generativelanguage.googleapis.com/v1/models/gemini-pro-vision:generateContent', {
+    const response = await fetch('https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-8b:generateContent', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
