@@ -1,10 +1,21 @@
 import { Button } from "@/components/ui/button"
 import { ArrowRight, Upload, Download, Star, Check, Menu, X } from "lucide-react"
-import { Link } from "react-router-dom"
-import { useState } from "react"
+import { Link, useNavigate } from "react-router-dom"
+import { useState, useEffect } from "react"
+import { supabase } from "@/integrations/supabase/client"
 
 const LandingPage = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const navigate = useNavigate()
+
+  const handleGetStarted = async () => {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session) {
+      navigate('/app')
+    } else {
+      navigate('/auth')
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -22,9 +33,7 @@ const LandingPage = () => {
               <a href="#pricing" className="text-muted-foreground hover:text-foreground">Pricing</a>
               <a href="#testimonials" className="text-muted-foreground hover:text-foreground">Testimonials</a>
               <a href="#faq" className="text-muted-foreground hover:text-foreground">FAQ</a>
-              <Link to="/auth">
-                <Button>Get Started</Button>
-              </Link>
+              <Button onClick={handleGetStarted}>Get Started</Button>
             </div>
 
             <button 
@@ -41,9 +50,7 @@ const LandingPage = () => {
               <a href="#pricing" className="block text-muted-foreground hover:text-foreground">Pricing</a>
               <a href="#testimonials" className="block text-muted-foreground hover:text-foreground">Testimonials</a>
               <a href="#faq" className="block text-muted-foreground hover:text-foreground">FAQ</a>
-              <Link to="/auth">
-                <Button className="w-full">Get Started</Button>
-              </Link>
+              <Button className="w-full" onClick={handleGetStarted}>Get Started</Button>
             </div>
           )}
         </div>
@@ -63,12 +70,10 @@ const LandingPage = () => {
               Perfect for photographers, marketers, and content creators.
             </p>
             <div className="flex items-center justify-center gap-4">
-              <Link to="/auth">
-                <Button size="lg" className="group">
-                  Try for Free
-                  <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" />
-                </Button>
-              </Link>
+              <Button size="lg" className="group" onClick={handleGetStarted}>
+                Try for Free
+                <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" />
+              </Button>
               <Button variant="outline" size="lg">
                 See Pricing
               </Button>
@@ -290,12 +295,10 @@ const LandingPage = () => {
           <p className="text-muted-foreground mb-8">
             Try it free with 5 credits. No credit card required.
           </p>
-          <Link to="/auth">
-            <Button size="lg">
-              Start Generating Keywords
-              <ArrowRight className="ml-2" />
-            </Button>
-          </Link>
+          <Button size="lg" onClick={handleGetStarted}>
+            Start Generating Keywords
+            <ArrowRight className="ml-2" />
+          </Button>
         </div>
       </section>
 

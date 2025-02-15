@@ -16,7 +16,7 @@ const AuthPage = () => {
       try {
         const { data: { session } } = await supabase.auth.getSession()
         if (session) {
-          navigate('/')
+          navigate('/app')
         }
       } catch (error) {
         console.error('Session check error:', error)
@@ -33,7 +33,7 @@ const AuthPage = () => {
           title: "Success",
           description: "Successfully signed in!"
         })
-        navigate('/')
+        navigate('/app')
       }
       
       if (event === 'SIGNED_OUT') {
