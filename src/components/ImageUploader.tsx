@@ -3,6 +3,7 @@ import { useState, useRef } from 'react';
 import { processImages } from '@/services/uploadService';
 import { exportToCSV } from '@/utils/exportUtils';
 import { ProgressBar } from './ProgressBar';
+import { ImageMetadata } from '@/config/imageAnalysis';
 
 export const ImageUploader = () => {
   const [progress, setProgress] = useState(0);
@@ -40,6 +41,20 @@ export const ImageUploader = () => {
     if (results.length > 0) {
       exportToCSV(results);
     }
+  };
+
+  const renderMetadata = (metadata: ImageMetadata) => {
+    return (
+      <div className="space-y-2 text-sm">
+        <p><span className="font-medium">Title:</span> {metadata.title}</p>
+        <p><span className="font-medium">Description:</span> {metadata.description}</p>
+        <p><span className="font-medium">Category:</span> {metadata.category}</p>
+        <div>
+          <span className="font-medium">Keywords: </span>
+          {metadata.keywords.join(', ')}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -93,11 +108,9 @@ export const ImageUploader = () => {
               >
                 <p className="font-medium">{result.fileName}</p>
                 {result.success ? (
-                  <p className="text-sm text-gray-600 mt-1">
-                    {result.metadata || 'No metadata generated'}
-                  </p>
+                  result.metadata ? renderMetadata(result.metadata) : <p className="text-sm text-gray-600">No metadata generated</p>
                 ) : (
-                  <p className="text-sm text-red-600 mt-1">{result.error}</p>
+                  <p className="text-sm text-red-600">{result.error}</p>
                 )}
               </div>
             ))}
