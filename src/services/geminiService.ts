@@ -9,6 +9,28 @@ interface GeminiImageInput {
   mimeType: string;
 }
 
+// Helper function to clean markdown and extract JSON
+const extractJsonFromResponse = (text: string): string => {
+  // Remove markdown code block markers if present
+  const cleanText = text
+    .replace(/```json\n?/g, '')  // Remove ```json
+    .replace(/```\n?/g, '')      // Remove closing ```
+    .trim();                     // Clean up whitespace
+
+  return cleanText;
+};
+
+// Helper to validate metadata structure
+const validateMetadata = (data: any): data is ImageMetadata => {
+  return (
+    typeof data === 'object' &&
+    typeof data.title === 'string' &&
+    typeof data.description === 'string' &&
+    Array.isArray(data.keywords) &&
+    typeof data.category === 'string'
+  );
+};
+
 export const analyzeImages = async (images: GeminiImageInput[]) => {
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-8b" });
@@ -25,13 +47,24 @@ export const analyzeImages = async (images: GeminiImageInput[]) => {
     const text = response.text();
 
     try {
-      const metadata = JSON.parse(text) as ImageMetadata;
+      // Clean and parse the response
+      const cleanedText = extractJsonFromResponse(text);
+      console.log('Cleaned response:', cleanedText); // Debug log
+      
+      const parsedData = JSON.parse(cleanedText);
+      
+      // Validate the parsed data
+      if (!validateMetadata(parsedData)) {
+        throw new Error('Response does not match expected metadata structure');
+      }
+
       return {
         success: true,
-        metadata
+        metadata: parsedData as ImageMetadata
       };
     } catch (parseError) {
-      console.error('Failed to parse Gemini response:', parseError);
+      console.error('Raw Gemini response:', text); // Debug log
+      console.error('Parse error:', parseError);
       throw new Error('Failed to parse metadata from AI response');
     }
   } catch (error) {
