@@ -10,9 +10,6 @@ interface GeminiImageInput {
   mimeType: string;
 }
 
-// Helper function to delay execution
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
 // Helper function to clean markdown and extract JSON
 const extractJsonFromResponse = (text: string): string => {
   return text
@@ -32,42 +29,10 @@ const validateMetadata = (data: any): data is ImageMetadata => {
   );
 };
 
-// Retry wrapper for API calls
-const retryWithBackoff = async (
-  fn: () => Promise<any>,
-  maxRetries: number = 3,
-  initialDelay: number = 2000
-) => {
-  let retries = 0;
-  let delay = initialDelay;
-
-  while (retries < maxRetries) {
-    try {
-      return await fn();
-    } catch (error: any) {
-      if (error?.status === 429) {
-        retries++;
-        if (retries === maxRetries) {
-          throw new Error('Rate limit exceeded. Please try again in a few minutes.');
-        }
-        toast({
-          title: "Rate limit hit",
-          description: `Waiting ${delay/1000} seconds before retrying...`,
-          variant: "default"
-        });
-        await new Promise(resolve => setTimeout(resolve, delay));
-        delay *= 2; // Exponential backoff
-        continue;
-      }
-      throw error;
-    }
-  }
-  throw new Error('Max retries reached');
-};
-
 export const analyzeImages = async (images: GeminiImageInput[]) => {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-8b" });
+    // Changed model to "gemini-pro-vision"
+    const model = genAI.getGenerativeModel({ model: "gemini-pro-vision" });
 
     const imageParts = images.map(img => ({
       inlineData: {
@@ -76,12 +41,7 @@ export const analyzeImages = async (images: GeminiImageInput[]) => {
       }
     }));
 
-    // Wrap the API call with retry logic
-    const result = await retryWithBackoff(async () => {
-      const response = await model.generateContent([systemPrompt, ...imageParts]);
-      return response;
-    });
-
+    const result = await model.generateContent([systemPrompt, ...imageParts]);
     const response = await result.response;
     const text = response.text();
 
@@ -106,7 +66,6 @@ export const analyzeImages = async (images: GeminiImageInput[]) => {
     }
   } catch (error: any) {
     console.error('Gemini API error:', error);
-    // Show user-friendly error message
     toast({
       title: "Error processing image",
       description: error.message || "Failed to generate metadata. Please try again.",
