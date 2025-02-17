@@ -1,6 +1,8 @@
 
 import { validateImageFile } from '@/utils/imageUtils';
 import { analyzeImages } from './geminiService';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface ProcessProgress {
   processed: number;
@@ -12,7 +14,7 @@ interface ProcessResult {
   fileName: string;
   base64Data: string;
   mimeType: string;
-  metadata?: any; // Changed from string to any to accept the new metadata structure
+  metadata?: any;
   error?: string;
   success: boolean;
 }
@@ -37,15 +39,71 @@ export const imageToBase64 = async (file: File): Promise<string> => {
   });
 };
 
+export const checkCredits = async (requiredCredits: number): Promise<boolean> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('credits')
+    .eq('id', user.id)
+    .single();
+
+  return profile?.credits >= requiredCredits;
+};
+
+export const deductCredits = async (amount: number, description: string = 'Image processing'): Promise<boolean> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const { data, error } = await supabase.rpc('deduct_credits', {
+    user_id: user.id,
+    amount,
+    description
+  });
+
+  if (error) {
+    console.error('Error deducting credits:', error);
+    return false;
+  }
+
+  return data;
+};
+
+export const addCredits = async (amount: number, description: string = 'Development credit addition'): Promise<boolean> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const { data, error } = await supabase.rpc('add_credits', {
+    user_id: user.id,
+    amount,
+    description
+  });
+
+  if (error) {
+    console.error('Error adding credits:', error);
+    return false;
+  }
+
+  return data;
+};
+
 export const processImages = async (
   files: File[],
   onProgress?: (progress: ProcessProgress) => void,
   batchSize: number = 50
 ) => {
   try {
+    // Check if user has enough credits
+    const hasEnoughCredits = await checkCredits(files.length);
+    if (!hasEnoughCredits) {
+      throw new Error('Not enough credits to process these images');
+    }
+
     const results: ProcessResult[] = [];
     const total = files.length;
     let processed = 0;
+    let successfulProcessed = 0;
 
     // Process in batches
     for (let i = 0; i < total; i += batchSize) {
@@ -89,11 +147,15 @@ export const processImages = async (
         try {
           const analysisResult = await analyzeImages(successfulImages);
           if (analysisResult.success) {
+            // Deduct credits for successful analyses
+            await deductCredits(successfulImages.length);
+            successfulProcessed += successfulImages.length;
+
             // Add metadata to successful results
             successfulImages.forEach(img => {
               results.push({
                 ...img,
-                metadata: analysisResult.metadata // This is now the structured metadata
+                metadata: analysisResult.metadata
               });
             });
           }
@@ -130,7 +192,8 @@ export const processImages = async (
     return {
       success: true,
       results,
-      totalProcessed: processed
+      totalProcessed: processed,
+      successfulProcessed
     };
   } catch (error) {
     console.error('Processing error:', error);

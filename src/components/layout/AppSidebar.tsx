@@ -4,13 +4,16 @@ import { useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme/ThemeToggle"
 import { supabase } from "@/integrations/supabase/client"
+import { useToast } from "@/hooks/use-toast"
 import {
   CreditCard,
   Image,
   LogOut,
   MessageSquare,
   User,
+  Plus,
 } from "lucide-react"
+import { addCredits } from "@/services/uploadService"
 
 interface Profile {
   username: string | null
@@ -22,29 +25,70 @@ interface Profile {
 export function AppSidebar() {
   const navigate = useNavigate()
   const [profile, setProfile] = useState<Profile | null>(null)
+  const { toast } = useToast()
 
-  useEffect(() => {
-    const fetchProfile = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        const { data } = await supabase
-          .from('profiles')
-          .select('username, email, credits, avatar_url')
-          .eq('id', user.id)
-          .single()
-        
-        if (data) {
-          setProfile(data)
-        }
+  const fetchProfile = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const { data } = await supabase
+        .from('profiles')
+        .select('username, email, credits, avatar_url')
+        .eq('id', user.id)
+        .single()
+      
+      if (data) {
+        setProfile(data)
       }
     }
+  }
 
+  useEffect(() => {
     fetchProfile()
+
+    // Subscribe to realtime changes
+    const channel = supabase
+      .channel('profile_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+        },
+        () => {
+          fetchProfile()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      channel.unsubscribe()
+    }
   }, [])
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
     navigate('/auth')
+  }
+
+  const handleAddCredits = async () => {
+    try {
+      const success = await addCredits(10);
+      if (success) {
+        toast({
+          title: "Credits Added",
+          description: "10 credits have been added to your account",
+        })
+      } else {
+        throw new Error("Failed to add credits");
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add credits",
+        variant: "destructive",
+      })
+    }
   }
 
   return (
@@ -68,6 +112,14 @@ export function AppSidebar() {
           <Button variant="ghost" className="justify-start">
             <CreditCard className="mr-2 h-4 w-4" />
             Credits: {profile?.credits ?? 0}
+          </Button>
+          <Button 
+            variant="ghost" 
+            className="justify-start text-green-500 hover:text-green-600"
+            onClick={handleAddCredits}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add Credits (Dev)
           </Button>
           <Button variant="ghost" className="justify-start">
             <MessageSquare className="mr-2 h-4 w-4" />
