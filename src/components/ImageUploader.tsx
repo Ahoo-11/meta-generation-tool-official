@@ -4,11 +4,21 @@ import { processImages } from '@/services/uploadService';
 import { exportToCSV } from '@/utils/exportUtils';
 import { ProgressBar } from './ProgressBar';
 import { ImageMetadata } from '@/config/imageAnalysis';
+import { templates } from '@/utils/csvTemplates';
+import { Button } from './ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export const ImageUploader = () => {
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState<'processing' | 'paused' | 'completed' | 'error'>('completed');
   const [results, setResults] = useState<any[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState("AdobeStock");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -39,7 +49,7 @@ export const ImageUploader = () => {
 
   const handleExport = () => {
     if (results.length > 0) {
-      exportToCSV(results);
+      exportToCSV(results, selectedTemplate);
     }
   };
 
@@ -68,13 +78,12 @@ export const ImageUploader = () => {
           onChange={handleFileSelect}
           className="hidden"
         />
-        <button
+        <Button
           onClick={() => fileInputRef.current?.click()}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
           disabled={status === 'processing'}
         >
           Select Images
-        </button>
+        </Button>
         <p className="mt-2 text-sm text-gray-500">
           Select multiple images to generate metadata
         </p>
@@ -90,12 +99,29 @@ export const ImageUploader = () => {
             <h3 className="text-lg font-semibold">
               Processed {results.length} images
             </h3>
-            <button
-              onClick={handleExport}
-              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
-            >
-              Export to CSV
-            </button>
+            <div className="flex items-center gap-4">
+              <Select
+                value={selectedTemplate}
+                onValueChange={setSelectedTemplate}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Select template" />
+                </SelectTrigger>
+                <SelectContent>
+                  {templates.map(template => (
+                    <SelectItem key={template.name} value={template.name}>
+                      {template.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                onClick={handleExport}
+                className="bg-green-500 hover:bg-green-600"
+              >
+                Export to CSV
+              </Button>
+            </div>
           </div>
 
           <div className="space-y-2">
