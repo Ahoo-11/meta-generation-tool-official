@@ -44,6 +44,6 @@ export const systemPrompt = `Analyze this image and provide the following metada
 Requirements:
 1. Response MUST be in valid JSON format
 2. Category MUST match exactly one from the provided list
-3. Keywords should be specific and relevant, maximum 5
+3. Keywords should be specific and relevant, maximum 49, minimum 45.
 4. Description should be 2-3 sentences
 5. Title should be concise but descriptive`;
