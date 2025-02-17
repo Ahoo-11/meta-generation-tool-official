@@ -1,3 +1,4 @@
+
 interface ImageMetadata {
   fileName: string;
   metadata?: string;
@@ -17,10 +18,10 @@ export const exportToCSV = (data: ImageMetadata[]) => {
     item.error || ''
   ]);
   
-  // Combine headers and rows
+  // Combine headers and rows, ensuring all values are strings before replace
   const csvContent = [
     headers.join(','),
-    ...rows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(','))
+    ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
   ].join('\n');
   
   // Create blob and download
