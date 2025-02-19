@@ -70,7 +70,7 @@ export const analyzeImages = async (images: GeminiImageInput[]) => {
     }));
 
     const requestBody = {
-      model: "google/gemini-1.5-pro-vision-latest",
+      model: "google/gemini-flash-1.5-8b",
       messages: [
         {
           role: "user",
