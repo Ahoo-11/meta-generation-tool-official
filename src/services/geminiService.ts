@@ -89,13 +89,13 @@ export const analyzeImages = async (images: GeminiImageInput[]) => {
 
     // Wrap the API call with retry logic
     const result = await retryWithBackoff(async () => {
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      const response = await fetch('https://api.openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${import.meta.env.VITE_OPENROUTER_API_KEY}`,
+          'X-Title': 'Pixel Keywording',
           'HTTP-Referer': window.location.origin,
-          'X-Title': 'Pixel Keywording'
         },
         body: JSON.stringify(requestBody)
       });
