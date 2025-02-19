@@ -1,9 +1,6 @@
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { ImageMetadata, systemPrompt } from "@/config/imageAnalysis";
 import { toast } from "@/hooks/use-toast";
-
-const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
 
 interface GeminiImageInput {
   base64Data: string;
@@ -67,25 +64,52 @@ const retryWithBackoff = async (
 
 export const analyzeImages = async (images: GeminiImageInput[]) => {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-8b" });
-
     const imageParts = images.map(img => ({
-      inlineData: {
-        data: img.base64Data,
-        mimeType: img.mimeType
-      }
+      data: img.base64Data,
+      mime_type: img.mimeType
     }));
+
+    const requestBody = {
+      model: "google/gemini-1.5-pro-vision-latest",
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: systemPrompt },
+            ...imageParts.map(img => ({
+              type: "image_url",
+              image_url: {
+                url: `data:${img.mime_type};base64,${img.data}`
+              }
+            }))
+          ]
+        }
+      ]
+    };
 
     // Wrap the API call with retry logic
     const result = await retryWithBackoff(async () => {
-      const response = await model.generateContent([systemPrompt, ...imageParts]);
-      return response;
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_OPENROUTER_API_KEY}`,
+          'HTTP-Referer': window.location.origin,
+          'X-Title': 'Pixel Keywording'
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to generate metadata');
+      }
+
+      return response.json();
     });
 
-    const response = await result.response;
-    const text = response.text();
-
     try {
+      const text = result.choices[0].message.content;
       const cleanedText = extractJsonFromResponse(text);
       console.log('Cleaned response:', cleanedText);
       
@@ -100,12 +124,12 @@ export const analyzeImages = async (images: GeminiImageInput[]) => {
         metadata: parsedData as ImageMetadata
       };
     } catch (parseError) {
-      console.error('Raw Gemini response:', text);
+      console.error('Raw OpenRouter response:', result);
       console.error('Parse error:', parseError);
       throw new Error('Failed to parse metadata from AI response');
     }
   } catch (error: any) {
-    console.error('Gemini API error:', error);
+    console.error('OpenRouter API error:', error);
     // Show user-friendly error message
     toast({
       title: "Error processing image",
