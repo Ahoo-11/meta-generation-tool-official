@@ -45,25 +45,36 @@ export function AppSidebar() {
   useEffect(() => {
     fetchProfile()
 
-    // Subscribe to realtime changes
-    const channel = supabase
-      .channel('profile_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'profiles',
-        },
-        () => {
-          fetchProfile()
-        }
-      )
-      .subscribe()
+    // Subscribe to realtime profile changes for the current user
+    const setupRealtimeSubscription = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
 
-    return () => {
-      channel.unsubscribe()
+      const channel = supabase
+        .channel('profile_changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+            schema: 'public',
+            table: 'profiles',
+            filter: `id=eq.${user.id}` // Only listen to changes for current user
+          },
+          (payload) => {
+            console.log('Profile change detected:', payload)
+            if (payload.new) {
+              setProfile(payload.new as Profile)
+            }
+          }
+        )
+        .subscribe()
+
+      return () => {
+        supabase.removeChannel(channel)
+      }
     }
+
+    setupRealtimeSubscription()
   }, [])
 
   const handleSignOut = async () => {
