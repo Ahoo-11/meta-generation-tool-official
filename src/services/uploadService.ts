@@ -1,5 +1,4 @@
-
-import { validateImageFile } from '@/utils/imageUtils';
+import { validateImageFile, compressImage } from '@/utils/imageUtils';
 import { analyzeImages } from './geminiService';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -111,7 +110,7 @@ export const processImages = async (
       const batchPromises = batch.map(async (file) => {
         try {
           validateImageFile(file);
-          const base64Data = await imageToBase64(file);
+          const { base64Data, mimeType } = await compressImage(file);
           processed++;
           
           onProgress?.({
@@ -124,7 +123,7 @@ export const processImages = async (
             success: true,
             fileName: file.name,
             base64Data,
-            mimeType: file.type
+            mimeType
           } as ProcessedImage;
         } catch (error) {
           console.error(`Error processing ${file.name}:`, error);
@@ -146,16 +145,22 @@ export const processImages = async (
       if (successfulImages.length > 0) {
         try {
           const analysisResult = await analyzeImages(successfulImages);
-          if (analysisResult.success) {
+          if (analysisResult.success && Array.isArray(analysisResult.metadata)) {
             // Deduct credits for successful analyses
             await deductCredits(successfulImages.length);
             successfulProcessed += successfulImages.length;
 
-            // Add metadata to successful results
-            successfulImages.forEach(img => {
+            // Add metadata to successful results, mapping each metadata to its corresponding image
+            successfulImages.forEach((img, index) => {
               results.push({
                 ...img,
-                metadata: analysisResult.metadata
+                metadata: analysisResult.metadata[index] || {
+                  title: 'No title available',
+                  description: 'No description available',
+                  category: 'No category available',
+                  keywords: []
+                },
+                success: !!analysisResult.metadata[index]
               });
             });
           }

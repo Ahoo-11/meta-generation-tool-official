@@ -1,4 +1,3 @@
-
 import { ImageMetadata, systemPrompt } from "@/config/imageAnalysis";
 import { toast } from "@/hooks/use-toast";
 
@@ -19,7 +18,17 @@ const extractJsonFromResponse = (text: string): string => {
 };
 
 // Helper to validate metadata structure
-const validateMetadata = (data: any): data is ImageMetadata => {
+const validateMetadata = (data: any): data is ImageMetadata | ImageMetadata[] => {
+  if (Array.isArray(data)) {
+    return data.every(item => 
+      typeof item === 'object' &&
+      typeof item.title === 'string' &&
+      typeof item.description === 'string' &&
+      Array.isArray(item.keywords) &&
+      typeof item.category === 'string'
+    );
+  }
+  
   return (
     typeof data === 'object' &&
     typeof data.title === 'string' &&
@@ -62,24 +71,49 @@ const retryWithBackoff = async (
   throw new Error('Max retries reached');
 };
 
+// Check API key status and rate limits
+const checkApiStatus = async () => {
+  const response = await fetch('https://openrouter.ai/api/v1/auth/key', {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${import.meta.env.VITE_OPENROUTER_API_KEY}`
+    }
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Failed to check API status');
+  }
+  
+  return await response.json();
+};
+
 export const analyzeImages = async (images: GeminiImageInput[]) => {
   try {
-    const imageParts = images.map(img => ({
-      data: img.base64Data,
-      mime_type: img.mimeType
-    }));
+    // Check API status and rate limits first
+    const apiStatus = await checkApiStatus();
+    console.log('API Status:', apiStatus);
 
+    // Log the number of images and their total size
+    const totalSize = images.reduce((acc, img) => acc + img.base64Data.length, 0);
+    console.log(`Processing ${images.length} images with total base64 size: ${(totalSize / 1024 / 1024).toFixed(2)}MB`);
+
+    // Prepare all images in a single request
     const requestBody = {
       model: "google/gemini-flash-1.5-8b",
       messages: [
         {
+          role: "system",
+          content: systemPrompt
+        },
+        {
           role: "user",
           content: [
-            { type: "text", text: systemPrompt },
-            ...imageParts.map(img => ({
+            { type: "text", text: "Please analyze these images and provide metadata as an array." },
+            ...images.map(img => ({
               type: "image_url",
               image_url: {
-                url: `data:${img.mime_type};base64,${img.data}`
+                url: `data:${img.mimeType};base64,${img.base64Data}`
               }
             }))
           ]
@@ -87,7 +121,7 @@ export const analyzeImages = async (images: GeminiImageInput[]) => {
       ]
     };
 
-    // Wrap the API call with retry logic
+    // Make the API call with retry logic
     const result = await retryWithBackoff(async () => {
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
@@ -100,43 +134,69 @@ export const analyzeImages = async (images: GeminiImageInput[]) => {
         body: JSON.stringify(requestBody)
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        console.error('OpenRouter API error details:', error);
-        throw new Error(error.message || 'Failed to generate metadata');
+      const jsonData = await response.json();
+      console.log('Raw API Response:', jsonData);
+
+      if (!response.ok || jsonData.error) {
+        // Log detailed error information
+        const errorDetails = jsonData.error || {};
+        console.error('Detailed error:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorDetails,
+          headers: Object.fromEntries(response.headers.entries())
+        });
+
+        if (errorDetails.code === 429) {
+          throw { status: 429, message: 'Rate limit exceeded' };
+        }
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        // Handle provider-specific errors
+        if (errorDetails.metadata?.provider_name) {
+          throw new Error(`Provider ${errorDetails.metadata.provider_name} error: ${errorDetails.message}`);
+        }
+
+        throw new Error(`API error: ${errorDetails.message || 'Unknown error'}`);
       }
 
-      return response.json();
+      return jsonData;
     });
 
-    try {
-      const text = result.choices[0].message.content;
-      const cleanedText = extractJsonFromResponse(text);
-      console.log('Cleaned response:', cleanedText);
-      
-      const parsedData = JSON.parse(cleanedText);
-      
-      if (!validateMetadata(parsedData)) {
-        throw new Error('Response does not match expected metadata structure');
-      }
-
-      return {
-        success: true,
-        metadata: parsedData as ImageMetadata
-      };
-    } catch (parseError) {
-      console.error('Raw OpenRouter response:', result);
-      console.error('Parse error:', parseError);
-      throw new Error('Failed to parse metadata from AI response');
+    // Validate response structure
+    if (!result.choices?.[0]?.message?.content) {
+      throw new Error('Invalid response structure: No content found');
     }
-  } catch (error: any) {
+
+    const text = result.choices[0].message.content;
+    const cleanedText = extractJsonFromResponse(text);
+    console.log('Cleaned response:', cleanedText);
+    
+    const parsedData = JSON.parse(cleanedText);
+    
+    if (!validateMetadata(parsedData)) {
+      throw new Error('Invalid metadata structure in response');
+    }
+
+    return {
+      success: true,
+      metadata: parsedData
+    };
+
+  } catch (error) {
     console.error('OpenRouter API error:', error);
+    
     // Show user-friendly error message
+    const errorMessage = error instanceof Error ? error.message : 'Failed to generate metadata';
     toast({
-      title: "Error processing image",
-      description: error.message || "Failed to generate metadata. Please try again.",
+      title: "Error processing images",
+      description: errorMessage,
       variant: "destructive"
     });
+    
     throw error;
   }
 };

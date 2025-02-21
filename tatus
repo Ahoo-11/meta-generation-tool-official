@@ -1,0 +1,6 @@
+.env
+package-lock.json
+src/components/ImageUploader.tsx
+src/services/geminiService.ts
+src/services/uploadService.ts
+src/utils/imageUtils.ts

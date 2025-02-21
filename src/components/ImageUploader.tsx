@@ -1,4 +1,3 @@
-
 import { useState, useRef } from 'react';
 import { processImages } from '@/services/uploadService';
 import { exportToCSV } from '@/utils/exportUtils';
@@ -14,10 +13,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+interface ProcessResult {
+  fileName: string;
+  success: boolean;
+  metadata?: ImageMetadata;
+  error?: string;
+}
+
 export const ImageUploader = () => {
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState<'processing' | 'paused' | 'completed' | 'error'>('completed');
-  const [results, setResults] = useState<any[]>([]);
+  const [results, setResults] = useState<ProcessResult[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState("AdobeStock");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -54,14 +60,16 @@ export const ImageUploader = () => {
   };
 
   const renderMetadata = (metadata: ImageMetadata) => {
+    if (!metadata) return <p className="text-sm text-gray-600">No metadata available</p>;
+    
     return (
       <div className="space-y-2 text-sm">
-        <p><span className="font-medium">Title:</span> {metadata.title}</p>
-        <p><span className="font-medium">Description:</span> {metadata.description}</p>
-        <p><span className="font-medium">Category:</span> {metadata.category}</p>
+        <p><span className="font-medium">Title:</span> {metadata.title || 'No title available'}</p>
+        <p><span className="font-medium">Description:</span> {metadata.description || 'No description available'}</p>
+        <p><span className="font-medium">Category:</span> {metadata.category || 'No category available'}</p>
         <div>
           <span className="font-medium">Keywords: </span>
-          {metadata.keywords.join(', ')}
+          {metadata.keywords?.join(', ') || 'No keywords available'}
         </div>
       </div>
     );
