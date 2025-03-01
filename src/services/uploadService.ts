@@ -1,28 +1,32 @@
 import { validateImageFile, compressImage } from '@/utils/imageUtils';
-import { analyzeImages } from './geminiService';
+import { analyzeImages, AnalysisResult } from './imageAnalysisService';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { ApiProvider } from '@/config/apiConfig';
 
 interface ProcessProgress {
-  processed: number;
-  total: number;
-  status: 'processing' | 'paused' | 'completed' | 'error';
+  totalImages: number;
+  processedImages: number;
+  successfulImages: number;
+  failedImages: number;
+  processingTimeMs: number;
+  status?: 'processing' | 'paused' | 'completed' | 'error';
 }
 
 interface ProcessResult {
   fileName: string;
   base64Data: string;
   mimeType: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
   error?: string;
   success: boolean;
 }
 
 interface ProcessedImage {
-  success: boolean;
   fileName: string;
-  base64Data?: string;
-  mimeType?: string;
+  base64Data: string;
+  mimeType: string;
+  success: boolean;
   error?: string;
 }
 
@@ -51,6 +55,25 @@ export const checkCredits = async (requiredCredits: number): Promise<boolean> =>
   return profile?.credits >= requiredCredits;
 };
 
+// Utility function to refresh profile
+export const refreshProfile = async () => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single();
+
+  if (error) {
+    console.error('Error refreshing profile:', error);
+    return null;
+  }
+
+  return data;
+};
+
 export const deductCredits = async (amount: number, description: string = 'Image processing'): Promise<boolean> => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return false;
@@ -65,6 +88,9 @@ export const deductCredits = async (amount: number, description: string = 'Image
     console.error('Error deducting credits:', error);
     return false;
   }
+
+  // After successful deduction, refresh the profile
+  await refreshProfile();
 
   return data;
 };
@@ -87,126 +113,76 @@ export const addCredits = async (amount: number, description: string = 'Developm
   return data;
 };
 
-export const processImages = async (
-  files: File[],
-  onProgress?: (progress: ProcessProgress) => void,
-  batchSize: number = 50
-) => {
+export const processImageFile = async (file: File): Promise<ProcessedImage> => {
   try {
-    // Check if user has enough credits
-    const hasEnoughCredits = await checkCredits(files.length);
-    if (!hasEnoughCredits) {
-      throw new Error('Not enough credits to process these images');
-    }
-
-    const results: ProcessResult[] = [];
-    const total = files.length;
-    let processed = 0;
-    let successfulProcessed = 0;
-
-    // Process in batches
-    for (let i = 0; i < total; i += batchSize) {
-      const batch = files.slice(i, i + batchSize);
-      const batchPromises = batch.map(async (file) => {
-        try {
-          validateImageFile(file);
-          const { base64Data, mimeType } = await compressImage(file);
-          processed++;
-          
-          onProgress?.({
-            processed,
-            total,
-            status: 'processing'
-          });
-
-          return {
-            success: true,
-            fileName: file.name,
-            base64Data,
-            mimeType
-          } as ProcessedImage;
-        } catch (error) {
-          console.error(`Error processing ${file.name}:`, error);
-          return {
-            success: false,
-            fileName: file.name,
-            error: error instanceof Error ? error.message : 'Unknown error'
-          } as ProcessedImage;
-        }
-      });
-
-      const batchResults = await Promise.all(batchPromises);
-      
-      // Only analyze successful conversions with base64 data
-      const successfulImages = batchResults.filter((r): r is Required<ProcessedImage> => 
-        r.success && !!r.base64Data && !!r.mimeType
-      );
-
-      if (successfulImages.length > 0) {
-        try {
-          const analysisResult = await analyzeImages(successfulImages);
-          if (analysisResult.success && Array.isArray(analysisResult.metadata)) {
-            // Deduct credits for successful analyses
-            await deductCredits(successfulImages.length);
-            successfulProcessed += successfulImages.length;
-
-            // Add metadata to successful results, mapping each metadata to its corresponding image
-            successfulImages.forEach((img, index) => {
-              results.push({
-                ...img,
-                metadata: analysisResult.metadata[index] || {
-                  title: 'No title available',
-                  description: 'No description available',
-                  category: 'No category available',
-                  keywords: []
-                },
-                success: !!analysisResult.metadata[index]
-              });
-            });
-          }
-        } catch (error) {
-          console.error('Batch analysis error:', error);
-          successfulImages.forEach(img => {
-            results.push({
-              ...img,
-              error: 'Metadata generation failed'
-            });
-          });
-        }
-      }
-      
-      // Add failed results
-      const failedImages = batchResults.filter(r => !r.success);
-      failedImages.forEach(img => {
-        results.push({
-          fileName: img.fileName,
-          base64Data: '',
-          mimeType: '',
-          success: false,
-          error: img.error
-        });
-      });
-    }
-
-    onProgress?.({
-      processed: total,
-      total,
-      status: 'completed'
-    });
-
+    validateImageFile(file);
+    const { base64Data, mimeType } = await compressImage(file);
     return {
       success: true,
-      results,
-      totalProcessed: processed,
-      successfulProcessed
+      fileName: file.name,
+      base64Data,
+      mimeType
     };
   } catch (error) {
-    console.error('Processing error:', error);
-    onProgress?.({
-      processed: 0,
-      total: files.length,
-      status: 'error'
-    });
-    throw error;
+    console.error(`Error processing ${file.name}:`, error);
+    return {
+      success: false,
+      fileName: file.name,
+      base64Data: '',
+      mimeType: '',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+};
+
+export const processImages = async (
+  files: File[],
+  progressCallback?: (progress: ProcessProgress) => void
+): Promise<AnalysisResult> => {
+  if (files.length === 0) {
+    return { success: false, metadata: [] };
+  }
+
+  try {
+    const processedImages: ProcessedImage[] = [];
+    
+    // First, process all images (compress etc.)
+    for (const file of files) {
+      try {
+        const processedImage = await processImageFile(file);
+        processedImages.push(processedImage);
+        
+        // Update progress during compression phase
+        if (progressCallback) {
+          progressCallback({
+            totalImages: files.length,
+            processedImages: processedImages.length,
+            successfulImages: processedImages.filter(img => img.success).length,
+            failedImages: processedImages.filter(img => !img.success).length,
+            processingTimeMs: 0,
+            status: 'processing'
+          });
+        }
+      } catch (error) {
+        console.error("Error processing image:", error);
+        // Continue with other images
+      }
+    }
+    
+    // Only keep successful image processings
+    const successfulImages = processedImages.filter(img => img.success);
+    
+    if (successfulImages.length === 0) {
+      return { success: false, metadata: [] };
+    }
+    
+    // Process all images at once through the analysis service
+    // The analyzeImages function will internally handle batching
+    // but will return a single consolidated result
+    return await analyzeImages(successfulImages, progressCallback);
+    
+  } catch (error) {
+    console.error("Error in processImages:", error);
+    return { success: false, metadata: [] };
   }
 };

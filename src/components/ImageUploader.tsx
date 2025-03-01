@@ -1,10 +1,14 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, DragEvent } from 'react';
 import { processImages } from '@/services/uploadService';
+import { useProfileStore } from '@/stores/profileStore';
+import { useApiProviderStore } from '@/stores/apiProviderStore';
+import { ApiProvider } from '@/config/apiConfig';
 import { exportToCSV } from '@/utils/exportUtils';
 import { ProgressBar } from './ProgressBar';
 import { ImageMetadata } from '@/config/imageAnalysis';
 import { templates } from '@/utils/csvTemplates';
 import { Button } from './ui/button';
+import { Upload } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -25,10 +29,13 @@ export const ImageUploader = () => {
   const [status, setStatus] = useState<'processing' | 'paused' | 'completed' | 'error'>('completed');
   const [results, setResults] = useState<ProcessResult[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState("AdobeStock");
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // API Provider state
+  const { currentProvider, setProvider } = useApiProviderStore();
 
-  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
+  const handleFiles = async (files: FileList | File[]) => {
     if (!files?.length) return;
 
     setStatus('processing');
@@ -39,17 +46,61 @@ export const ImageUploader = () => {
       const result = await processImages(
         Array.from(files),
         (progress) => {
-          setProgress((progress.processed / progress.total) * 100);
-          setStatus(progress.status);
+          setProgress(progress.processedImages / progress.totalImages * 100);
+          if (progress.status) {
+            setStatus(progress.status);
+          }
         }
       );
 
-      if (result.success) {
-        setResults(result.results);
+      if (result.success && result.metadata) {
+        // Convert metadata to ProcessResult format
+        const processedResults: ProcessResult[] = result.metadata.map(metadata => ({
+          fileName: metadata.fileName || 'unknown',
+          success: true,
+          metadata: metadata
+        }));
+        setResults(processedResults);
+        await useProfileStore.getState().refreshProfile();
       }
     } catch (error) {
       console.error('Processing error:', error);
       setStatus('error');
+    }
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files) {
+      handleFiles(files);
+    }
+  };
+
+  const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = e.dataTransfer.files;
+    if (files) {
+      handleFiles(files);
     }
   };
 
@@ -77,7 +128,30 @@ export const ImageUploader = () => {
 
   return (
     <div className="p-4 space-y-4">
-      <div className="flex flex-col items-center justify-center w-full p-6 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 transition-colors">
+      <div className="flex flex-col mb-4">
+        <span className="text-sm mb-1">API Provider</span>
+        <Select value={currentProvider} onValueChange={setProvider}>
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="API Provider" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="gemini">Google Gemini</SelectItem>
+            <SelectItem value="openrouter">OpenRouter</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div 
+        className={`flex flex-col items-center justify-center w-full p-6 border-2 border-dashed rounded-lg transition-colors duration-200 ${
+          isDragging 
+            ? 'border-primary bg-primary/5' 
+            : 'border-gray-300 hover:border-gray-400'
+        }`}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+      >
         <input
           ref={fileInputRef}
           type="file"
@@ -86,65 +160,66 @@ export const ImageUploader = () => {
           onChange={handleFileSelect}
           className="hidden"
         />
+        <Upload className="w-12 h-12 mb-4 text-gray-400" />
         <Button
           onClick={() => fileInputRef.current?.click()}
           disabled={status === 'processing'}
+          className="mb-2"
         >
           Select Images
         </Button>
-        <p className="mt-2 text-sm text-gray-500">
-          Select multiple images to generate metadata
+        <p className="text-sm text-gray-500">
+          Drag and drop images here or click to select
         </p>
       </div>
 
-      {status !== 'completed' && (
-        <ProgressBar progress={progress} status={status} />
-      )}
+      {status === 'processing' ? (
+        <div className="my-6 space-y-2">
+          <ProgressBar progress={progress} />
+          <p className="text-center text-sm text-gray-600">
+            Processing images... {Math.round(progress)}%
+          </p>
+          <p className="text-center text-xs text-gray-500">
+            Using {currentProvider === 'gemini' ? 'Google Gemini' : 'OpenRouter'} API
+          </p>
+        </div>
+      ) : null}
 
       {results.length > 0 && (
         <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold">
-              Processed {results.length} images
-            </h3>
-            <div className="flex items-center gap-4">
-              <Select
-                value={selectedTemplate}
-                onValueChange={setSelectedTemplate}
-              >
-                <SelectTrigger className="w-[180px]">
+          <div className="flex flex-wrap gap-4 mt-4 items-end">
+            <div className="flex flex-col">
+              <span className="text-sm mb-1">Export Template</span>
+              <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
+                <SelectTrigger className="w-40">
                   <SelectValue placeholder="Select template" />
                 </SelectTrigger>
                 <SelectContent>
-                  {templates.map(template => (
-                    <SelectItem key={template.name} value={template.name}>
-                      {template.name}
+                  {Object.keys(templates).map((template) => (
+                    <SelectItem key={template} value={template}>
+                      {template}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <Button
-                onClick={handleExport}
-                className="bg-green-500 hover:bg-green-600"
-              >
-                Export to CSV
-              </Button>
             </div>
+            
+            <Button onClick={handleExport} disabled={results.length === 0}>
+              Export CSV
+            </Button>
           </div>
 
-          <div className="space-y-2">
+          <div className="grid gap-4">
             {results.map((result, index) => (
               <div
                 key={index}
-                className={`p-4 rounded ${
-                  result.success ? 'bg-green-50' : 'bg-red-50'
-                }`}
+                className="p-4 border rounded-lg bg-card"
               >
-                <p className="font-medium">{result.fileName}</p>
+                <h3 className="font-medium mb-2">{result.fileName}</h3>
                 {result.success ? (
-                  result.metadata ? renderMetadata(result.metadata) : <p className="text-sm text-gray-600">No metadata generated</p>
+                  renderMetadata(result.metadata!)
                 ) : (
-                  <p className="text-sm text-red-600">{result.error}</p>
+                  <p className="text-sm text-destructive">{result.error}</p>
                 )}
               </div>
             ))}
