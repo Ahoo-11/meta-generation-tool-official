@@ -1,9 +1,9 @@
 interface ProgressBarProps {
   progress: number;
-  status: 'processing' | 'paused' | 'completed' | 'error';
+  status?: 'processing' | 'paused' | 'completed' | 'error';
 }
 
-export const ProgressBar = ({ progress, status }: ProgressBarProps) => {
+export const ProgressBar = ({ progress, status = 'processing' }: ProgressBarProps) => {
   const getStatusColor = () => {
     switch (status) {
       case 'processing':
@@ -26,12 +26,6 @@ export const ProgressBar = ({ progress, status }: ProgressBarProps) => {
           className={`h-full rounded-full transition-all duration-300 ${getStatusColor()}`}
           style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
         />
-      </div>
-      <div className="mt-1 text-sm text-gray-600">
-        {status === 'processing' && 'Processing images...'}
-        {status === 'completed' && 'Processing complete!'}
-        {status === 'error' && 'Error occurred'}
-        {status === 'paused' && 'Processing paused'}
       </div>
     </div>
   );

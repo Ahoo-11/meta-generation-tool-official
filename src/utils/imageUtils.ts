@@ -14,6 +14,8 @@ export const validateImageFile = (file: File) => {
 };
 
 export const compressImage = async (file: File): Promise<{ base64Data: string; mimeType: string }> => {
+  const originalSize = file.size;
+  
   return new Promise((resolve, reject) => {
     const img = new Image();
     const reader = new FileReader();
@@ -60,6 +62,16 @@ export const compressImage = async (file: File): Promise<{ base64Data: string; m
         // Convert to base64
         const base64Data = canvas.toDataURL(file.type, 0.9);
         const base64WithoutPrefix = base64Data.split(',')[1];
+        
+        // Calculate compressed size
+        const compressedSize = Math.round((base64WithoutPrefix.length * 3) / 4); // Approximate size from base64
+        
+        // Log size information
+        console.log(`Image: ${file.name}
+        Original: ${formatFileSize(originalSize)}
+        Compressed: ${formatFileSize(compressedSize)}
+        Dimensions: ${width}x${height} px
+        Reduction: ${Math.round((1 - compressedSize/originalSize) * 100)}%`);
 
         resolve({
           base64Data: base64WithoutPrefix,
@@ -78,4 +90,11 @@ export const compressImage = async (file: File): Promise<{ base64Data: string; m
 
     reader.readAsDataURL(file);
   });
+};
+
+// Helper function to format file size in human-readable format
+export const formatFileSize = (bytes: number): string => {
+  if (bytes < 1024) return bytes + ' bytes';
+  else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+  else return (bytes / 1048576).toFixed(1) + ' MB';
 };

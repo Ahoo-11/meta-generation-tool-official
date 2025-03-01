@@ -1,5 +1,4 @@
-
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme/ThemeToggle"
@@ -14,36 +13,15 @@ import {
   Plus,
 } from "lucide-react"
 import { addCredits } from "@/services/uploadService"
-
-interface Profile {
-  username: string | null
-  email: string
-  credits: number
-  avatar_url: string | null
-}
+import { useProfileStore } from "@/stores/profileStore"
 
 export function AppSidebar() {
   const navigate = useNavigate()
-  const [profile, setProfile] = useState<Profile | null>(null)
   const { toast } = useToast()
-
-  const fetchProfile = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      const { data } = await supabase
-        .from('profiles')
-        .select('username, email, credits, avatar_url')
-        .eq('id', user.id)
-        .single()
-      
-      if (data) {
-        setProfile(data)
-      }
-    }
-  }
+  const { profile, refreshProfile } = useProfileStore()
 
   useEffect(() => {
-    fetchProfile()
+    refreshProfile()
 
     // Subscribe to realtime profile changes for the current user
     const setupRealtimeSubscription = async () => {
@@ -55,16 +33,13 @@ export function AppSidebar() {
         .on(
           'postgres_changes',
           {
-            event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+            event: '*',
             schema: 'public',
             table: 'profiles',
-            filter: `id=eq.${user.id}` // Only listen to changes for current user
+            filter: `id=eq.${user.id}`
           },
-          (payload) => {
-            console.log('Profile change detected:', payload)
-            if (payload.new) {
-              setProfile(payload.new as Profile)
-            }
+          async () => {
+            await refreshProfile()
           }
         )
         .subscribe()
@@ -75,7 +50,7 @@ export function AppSidebar() {
     }
 
     setupRealtimeSubscription()
-  }, [])
+  }, [refreshProfile])
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
@@ -86,6 +61,7 @@ export function AppSidebar() {
     try {
       const success = await addCredits(10);
       if (success) {
+        await refreshProfile();
         toast({
           title: "Credits Added",
           description: "10 credits have been added to your account",
@@ -103,12 +79,12 @@ export function AppSidebar() {
   }
 
   return (
-    <div className="flex h-screen w-64 flex-col border-r bg-background">
+    <div className="fixed left-0 top-0 h-screen w-64 flex flex-col border-r bg-background z-10">
       <div className="flex h-14 items-center border-b px-4">
         <h2 className="text-lg font-semibold">Pixel Keywording</h2>
       </div>
       
-      <div className="flex-1 overflow-auto py-2">
+      <div className="flex-1 overflow-y-auto py-2">
         <nav className="grid gap-1 px-2">
           <Button variant="ghost" className="justify-start" asChild>
             <a href="/">
@@ -152,26 +128,15 @@ export function AppSidebar() {
               <User className="h-6 w-6" />
             )}
           </div>
-          <div className="flex flex-col">
-            <span className="text-sm font-medium">
-              {profile?.username || profile?.email || 'User'}
-            </span>
-            {profile?.username && (
-              <span className="text-xs text-muted-foreground">
-                {profile.email}
-              </span>
-            )}
+          <div>
+            <p className="font-medium">{profile?.username || 'User'}</p>
+            <p className="text-sm text-gray-500">{profile?.email}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between">
           <ThemeToggle />
-          <Button
-            variant="ghost"
-            className="flex-1 justify-start"
-            onClick={handleSignOut}
-          >
-            <LogOut className="mr-2 h-4 w-4" />
-            Sign out
+          <Button variant="ghost" size="icon" onClick={handleSignOut}>
+            <LogOut className="h-5 w-5" />
           </Button>
         </div>
       </div>
