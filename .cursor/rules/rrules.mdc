@@ -1,0 +1,10 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+
+# Your rule content
+
+- you can never change the batch size of 20 images, and you can never assume its the issue and you can never suggest to change it.
+- You can never be lazy when doing analysis when you try to get to the root of issues, you should never assume things always check the codebase.

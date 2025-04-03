@@ -34,13 +34,14 @@ const Terms = () => {
             <p>You must register using Google Authentication to access the Service. You are responsible for maintaining the confidentiality of your account and agree to notify us immediately of any unauthorized use.</p>
             <ul className="list-disc pl-6 mt-4 space-y-2">
               <li>Account sharing or reselling is prohibited</li>
-              <li>We reserve the right to suspend suspicious accounts</li>
               <li>One account per user</li>
             </ul>
           </section>
 
           <section className="mb-8">
             <h2 className="text-2xl font-semibold mb-4">4. Subscription Plans and Credits</h2>
+            <p>Each credit can be used to process either one image or one video, generating complete metadata including keywords, titles, category and descriptions for the processed content.</p>
+            
             <h3 className="text-xl font-semibold mt-4">Free Plan</h3>
             <ul className="list-disc pl-6 mt-2 space-y-2">
               <li>150 credits per month</li>
@@ -55,10 +56,10 @@ const Terms = () => {
               <li>Includes video processing</li>
             </ul>
 
-            <h3 className="text-xl font-semibold mt-4">Unlimited Plan - $30/month</h3>
+            <h3 className="text-xl font-semibold mt-4">Unlimited Plan (subject to fair usage) - $30/month</h3>
             <ul className="list-disc pl-6 mt-2 space-y-2">
-              <li>Unlimited processing</li>
-              <li>Subject to fair usage policy</li>
+              <li>Unlimited monthly processing (10,000 processes per day limit)</li>
+              <li>Fair usage limits apply for concurrent requests and file sizes</li>
             </ul>
 
             <h3 className="text-xl font-semibold mt-4">Additional Credits</h3>

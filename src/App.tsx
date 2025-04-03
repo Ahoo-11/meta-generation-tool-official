@@ -1,18 +1,30 @@
-
 import { Toaster } from "@/components/ui/toaster"
 import { Toaster as Sonner } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import Dashboard from "./pages/Dashboard"
 import AuthPage from "./pages/Auth"
+import AuthCallback from "./pages/AuthCallback"
 import LandingPage from "./pages/landing"
 import Terms from "./pages/legal/Terms"
 import Privacy from "./pages/legal/Privacy"
 import Refund from "./pages/legal/Refund"
 import { useSession, useSupabaseClient } from '@supabase/auth-helpers-react'
 import { useEffect, useState } from "react"
-import { ThemeProvider } from "@/components/theme/ThemeProvider"
+import { ThemeProvider } from "@/components/ThemeProvider";
 import { AppSidebar } from "@/components/layout/AppSidebar"
+import { HistoryTab } from "@/components/history/HistoryTab"
+import { StatsTab } from "@/components/stats/StatsTab"
+
+// Simple Settings placeholder component
+const SettingsPlaceholder = () => (
+  <div className="container mx-auto p-8">
+    <h1 className="text-3xl font-bold mb-6">Settings</h1>
+    <div className="p-6 bg-card rounded-lg border shadow-sm">
+      <p className="text-center text-muted-foreground">Settings page coming soon!</p>
+    </div>
+  </div>
+);
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const session = useSession()
@@ -54,7 +66,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
 
   return (
-    <div className="flex">
+    <div className="flex min-h-screen">
       <AppSidebar />
       <main className="flex-1">
         {children}
@@ -63,31 +75,75 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   )
 }
 
-const App = () => {
+function App() {
   return (
-    <ThemeProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route 
-              path="/app" 
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route path="/auth" element={<AuthPage />} />
-            <Route path="/legal/terms" element={<Terms />} />
-            <Route path="/legal/privacy" element={<Privacy />} />
-            <Route path="/legal/refund" element={<Refund />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </ThemeProvider>
+    <BrowserRouter>
+      <Routes>
+        {/* Landing page with light theme */}
+        <Route path="/" element={
+          <ThemeProvider defaultTheme="light" storageKey="pixel-keywording-theme-landing">
+            <TooltipProvider>
+              <LandingPage />
+            </TooltipProvider>
+          </ThemeProvider>
+        } />
+        
+        {/* App routes with dark theme */}
+        <Route path="/app/*" element={
+          <ThemeProvider defaultTheme="dark" storageKey="pixel-keywording-theme-app">
+            <TooltipProvider>
+              <ProtectedRoute>
+                <Routes>
+                  <Route path="/" element={<Dashboard />} />
+                  <Route path="history" element={<HistoryTab />} />
+                  <Route path="stats" element={<StatsTab />} />
+                  <Route path="settings" element={<SettingsPlaceholder />} />
+                </Routes>
+              </ProtectedRoute>
+            </TooltipProvider>
+          </ThemeProvider>
+        } />
+        
+        {/* Auth and legal pages with system theme */}
+        <Route path="/auth" element={
+          <ThemeProvider defaultTheme="system" storageKey="pixel-keywording-theme-auth">
+            <TooltipProvider>
+              <AuthPage />
+            </TooltipProvider>
+          </ThemeProvider>
+        } />
+        <Route path="/auth/callback" element={
+          <ThemeProvider defaultTheme="system" storageKey="pixel-keywording-theme-auth">
+            <TooltipProvider>
+              <AuthCallback />
+            </TooltipProvider>
+          </ThemeProvider>
+        } />
+        <Route path="/legal/terms" element={
+          <ThemeProvider defaultTheme="system" storageKey="pixel-keywording-theme-legal">
+            <TooltipProvider>
+              <Terms />
+            </TooltipProvider>
+          </ThemeProvider>
+        } />
+        <Route path="/legal/privacy" element={
+          <ThemeProvider defaultTheme="system" storageKey="pixel-keywording-theme-legal">
+            <TooltipProvider>
+              <Privacy />
+            </TooltipProvider>
+          </ThemeProvider>
+        } />
+        <Route path="/legal/refund" element={
+          <ThemeProvider defaultTheme="system" storageKey="pixel-keywording-theme-legal">
+            <TooltipProvider>
+              <Refund />
+            </TooltipProvider>
+          </ThemeProvider>
+        } />
+      </Routes>
+      <Toaster />
+      <Sonner />
+    </BrowserRouter>
   )
 }
 

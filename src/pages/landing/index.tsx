@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button"
 import { ArrowRight, Upload, Download, Star, Check, Menu, X } from "lucide-react"
 import { Link, useNavigate } from "react-router-dom"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { supabase } from "@/integrations/supabase/client"
 
 const LandingPage = () => {
@@ -169,10 +169,9 @@ const LandingPage = () => {
               </thead>
               <tbody>
                 {[
-                  { feature: "Monthly Credits", free: "150", basic: "5,000", unlimited: "Unlimited" },
+                  { feature: "Monthly Credits", free: "150", basic: "5,000", unlimited: "Unlimited (subject to fair usage)" },
                   { feature: "Video Processing", free: "❌", basic: "✅", unlimited: "✅" },
-                  { feature: "Bulk Processing", free: "❌", basic: "✅", unlimited: "✅" },
-                  { feature: "API Access", free: "❌", basic: "❌", unlimited: "✅" },
+                  { feature: "Bulk Processing", free: "✅", basic: "✅", unlimited: "✅" },
                   { feature: "Priority Support", free: "❌", basic: "✅", unlimited: "✅" },
                   { feature: "Price", free: "Free", basic: "$20/mo", unlimited: "$30/mo" }
                 ].map((row, i) => (
@@ -253,11 +252,11 @@ const LandingPage = () => {
               },
               {
                 q: "What happens to my unused credits?",
-                a: "Credits never expire and roll over to the next month. You can use them whenever you need them."
+                a: "Monthly credits expire at the end of each month and do not roll over. However, we offer an additional credits plan where credits never expire and remain available for as long as your account is active."
               },
               {
                 q: "How secure are my uploaded images?",
-                a: "We use enterprise-grade encryption and secure cloud storage. Your images are automatically deleted after processing unless you choose to save them."
+                a: "Your images are processed locally using your device's storage and are only kept temporarily during processing. We don't store your images on our servers, ensuring maximum privacy and security."
               }
             ].map((faq, index) => (
               <div key={index} className="p-6 bg-card rounded-lg border">

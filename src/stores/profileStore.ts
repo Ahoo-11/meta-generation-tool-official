@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { refreshProfile } from '@/services/uploadService';
 
-interface Profile {
+export interface Profile {
   username: string | null;
   email: string;
   credits: number;

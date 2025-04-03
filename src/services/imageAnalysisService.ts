@@ -1,548 +1,201 @@
 import { ImageMetadata, systemPrompt, categories } from "@/config/imageAnalysis";
-import { ApiProvider, API_PROVIDERS } from "@/config/apiConfig";
-import { useApiProviderStore } from "@/stores/apiProviderStore";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import { toast } from "@/hooks/use-toast";
+import { ApiProvider } from "@/config/apiConfig";
+import { toast } from "@/components/ui/use-toast";
+import { deductCredits, checkCredits } from "@/services/uploadService";
+import { 
+  createProcessingSession, 
+  recordProcessedImage, 
+  updateSessionStats 
+} from "@/services/historyService";
+import { compressImage } from '../utils/imageCompression';
+import { MetadataResult, ProgressInfo, GlobalStats, BatchStats, BatchError, ProcessedImage } from '@/types';
+import { API_CONFIG } from '@/config/apiConfig';
 
-// Initialize Gemini client
-const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY;
+// Define ImageCategory type here to avoid import issues
+type ImageCategory = typeof categories[number];
+
+// API key
 const openrouterApiKey = import.meta.env.VITE_OPENROUTER_API_KEY;
-
-if (!geminiApiKey) {
-  console.error('Gemini API key is not configured. Please add VITE_GEMINI_API_KEY to your .env file');
-}
 
 if (!openrouterApiKey) {
   console.error('OpenRouter API key is not configured. Please add VITE_OPENROUTER_API_KEY to your .env file');
 }
 
-// Initialize Google Gemini client
-const genAI = new GoogleGenerativeAI(geminiApiKey);
-const geminiModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash-8b" });
-
-export interface ProcessedImage {
-  success: boolean;
-  fileName: string;
-  base64Data: string;
-  mimeType: string;
-  error?: string;
-}
-
-// Result interface for the API calls
-export interface AnalysisResult {
-  success: boolean;
-  metadata: ImageMetadata[];
-}
-
-// Progress tracking interface
-export interface ProcessProgress {
-  totalImages: number;
-  processedImages: number;
-  successfulImages: number;
-  failedImages: number;
-  processingTimeMs: number;
-  status?: 'processing' | 'paused' | 'completed' | 'error';
-}
-
-// Helper utility for delay
-const delay = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms));
-
-// Helper function to clean markdown and extract JSON
-const extractJsonFromResponse = (text: string): string => {
-  try {
-    // Remove markdown code block markers with any variations
-    let cleaned = text
-      .replace(/```json\s*/gi, '') // Case insensitive match for ```json
-      .replace(/```JSON\s*/g, '')  // Explicit match for ```JSON
-      .replace(/```\s*/g, '')      // Remove closing ``` with any whitespace
-      .trim();
-
-    // Remove any comments (both single line and multi-line)
-    cleaned = cleaned
-      .replace(/\/\*[\s\S]*?\*\//g, '') // Remove multi-line comments
-      .replace(/\/\/.*/g, '')           // Remove single-line comments
-      .replace(/\n\s*\n/g, '\n')        // Remove empty lines
-      .trim();
-
-    // If the response ends with a comma followed by whitespace and closing bracket
-    // remove the trailing comma
-    cleaned = cleaned.replace(/,(\s*[\]}])/g, '$1');
-
-    // Test if it's valid JSON
-    JSON.parse(cleaned);
-    return cleaned;
-  } catch (error) {
-    console.error('JSON cleaning error:', error);
-    console.log('Original text:', text);
-    throw error;
-  }
+// Global state for tracking success/failure stats
+let globalStats: GlobalStats = {
+  totalImages: 0,
+  successfulImages: 0,
+  failedImages: 0,
+  processingTimeMs: 0,
+  batchStats: []
 };
 
-// Validate metadata structure and content
-const validateMetadata = (metadata: Partial<ImageMetadata>, index: number): { isValid: boolean; errors: string[] } => {
+// Reset the global stats
+export const resetGlobalStats = () => {
+  globalStats = {
+    totalImages: 0,
+    successfulImages: 0,
+    failedImages: 0,
+    processingTimeMs: 0,
+    batchStats: []
+  };
+};
+
+// Helper function to extract JSON from the API response
+const extractJsonFromResponse = (text: string): string => {
+  // Check for JSON code block markup
+  const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (jsonMatch && jsonMatch[1]) {
+    return jsonMatch[1].trim();
+  }
+  
+  // Try to find JSON array or object directly
+  const directJsonMatch = text.match(/(\[[\s\S]*\]|\{[\s\S]*\})/);
+  if (directJsonMatch && directJsonMatch[1]) {
+    return directJsonMatch[1].trim();
+  }
+  
+  // If no structured JSON found, return the original text
+  // This could cause parsing errors but at least we tried
+  return text;
+};
+
+// Validate the metadata structure
+export const validateMetadata = (metadata: Record<string, any>, index?: number): { isValid: boolean; errorCount: number; errors: string; metadata: MetadataResult | null } => {
+  const receivedFields = Object.keys(metadata || {});
+  console.log('🔥 DETAILED METADATA VALIDATION:', {
+    index,
+    receivedFields,
+    titleLength: metadata?.title?.length || 0,
+    descriptionLength: metadata?.description?.length || 0,
+    keywordsCount: metadata?.keywords?.length || 0,
+    category: metadata?.category || 'N/A'
+  });
+  
   const errors: string[] = [];
   
-  // Check required fields
-  if (!metadata.title || typeof metadata.title !== 'string' || metadata.title.trim().length === 0) {
-    errors.push('missing or invalid title');
+  // Check for required fields
+  if (!metadata) {
+    errors.push('Metadata is null or undefined');
+    return { 
+      isValid: false, 
+      errorCount: 1, 
+      errors: 'Metadata is null or undefined',
+      metadata: null
+    };
   }
-  if (!metadata.description || typeof metadata.description !== 'string' || metadata.description.trim().length === 0) {
-    errors.push('missing or invalid description');
+  
+  // Check title
+  if (!metadata.title) {
+    errors.push('Missing title');
+  } else if (typeof metadata.title !== 'string') {
+    errors.push('Title is not a string');
+  } else if (metadata.title.length < 5) {
+    errors.push(`Title too short (${metadata.title.length} chars)`);
+  } else if (metadata.title.length > 100) {
+    errors.push(`Title too long (${metadata.title.length} chars)`);
   }
-  if (!Array.isArray(metadata.keywords) || metadata.keywords.length < 15) {
-    errors.push('keywords must be an array with at least 15 items');
+  
+  // Check description
+  if (!metadata.description) {
+    errors.push('Missing description');
+  } else if (typeof metadata.description !== 'string') {
+    errors.push('Description is not a string');
+  } else if (metadata.description.length < 10) {
+    errors.push(`Description too short (${metadata.description.length} chars)`);
+  } else if (metadata.description.length > 500) {
+    errors.push(`Description too long (${metadata.description.length} chars)`);
+  }
+  
+  // Check keywords
+  if (!metadata.keywords) {
+    errors.push('Missing keywords');
+  } else if (!Array.isArray(metadata.keywords)) {
+    errors.push('Keywords is not an array');
+  } else if (metadata.keywords.length < 5) {
+    errors.push(`Too few keywords (${metadata.keywords.length})`);
+  } else if (metadata.keywords.length > 50) {
+    errors.push(`Too many keywords (${metadata.keywords.length})`);
   } else {
-    // Validate each keyword
-    const invalidKeywords = metadata.keywords.filter(k => typeof k !== 'string' || k.trim().length === 0);
-    if (invalidKeywords.length > 0) {
-      errors.push('some keywords are invalid or empty');
+    // Check that all keywords are strings
+    const nonStringKeywords = metadata.keywords.filter(k => typeof k !== 'string');
+    if (nonStringKeywords.length > 0) {
+      errors.push(`${nonStringKeywords.length} keywords are not strings`);
     }
   }
-  if (!metadata.category || !categories.includes(metadata.category as string)) {
-    errors.push(`invalid category: must be one of [${categories.join(', ')}]`);
+  
+  // Check category
+  if (!metadata.category) {
+    errors.push('Missing category');
+  } else if (typeof metadata.category !== 'string') {
+    errors.push('Category is not a string');
+  } else if (!categories.includes(metadata.category as any)) {
+    errors.push(`Invalid category: ${metadata.category}`);
   }
-
-  if (errors.length > 0) {
-    console.error(`Validation errors for image ${index}:`, errors);
-    return { isValid: false, errors };
-  }
-
-  return { isValid: true, errors: [] };
+  
+  const validationResult = { 
+    isValid: errors.length === 0,
+    errorCount: errors.length,
+    errors: errors.length ? errors.join(', ') : 'NO ERRORS',
+    metadata: errors.length ? null : {
+      ...metadata,
+      success: true,
+    } as MetadataResult
+  };
+  
+  console.log('🔥 VALIDATION RESULT:', validationResult);
+  return validationResult;
 };
 
-// Retry wrapper for API calls
+// Helper for exponential backoff retries
 const retryWithBackoff = async <T>(
   fn: () => Promise<T>,
-  maxRetries: number = 3,
-  initialDelay: number = 2000
+  maxRetries = 3,
+  backoffFactor = 1.5,
+  initialDelay = 2000
 ): Promise<T> => {
   let retries = 0;
   let delay = initialDelay;
-
+  
   while (true) {
     try {
       return await fn();
     } catch (error) {
       retries++;
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      
-      // Check for rate limit errors
-      const isRateLimitError = 
-        errorMessage.includes('rate limit') || 
-        errorMessage.includes('too many requests') ||
-        errorMessage.includes('429');
-      
-      console.log(`API call failed, attempt ${retries}/${maxRetries}`, error);
-
       if (retries >= maxRetries) {
+        console.error(`Maximum retries (${maxRetries}) reached. Giving up.`);
         throw error;
       }
-
-      // Use longer delays for rate limit errors
-      const waitTime = isRateLimitError ? Math.max(delay * 2, 5000) : delay;
-      console.log(`Waiting ${waitTime}ms before retry...`);
-      await new Promise(resolve => setTimeout(resolve, waitTime));
       
-      // Exponential backoff capped at 10 seconds
-      delay = Math.min(delay * 1.3, 10000);
+      console.warn(`Retry ${retries}/${maxRetries} after ${delay}ms due to error:`, error);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      delay = Math.floor(delay * backoffFactor);
     }
   }
 };
 
-// Check API key status and rate limits
-export const checkApiStatus = async (provider: ApiProvider = 'gemini'): Promise<boolean> => {
-  try {
-    if (provider === 'openrouter') {
-      // Check if we have a valid OpenRouter API key
-      if (!openrouterApiKey || openrouterApiKey === 'your_openrouter_api_key_here') {
-        console.error('OpenRouter API key is not configured or is set to the default value');
-        return false;
-      }
-      
-      // Verify the key with the OpenRouter API
-      try {
-        const response = await fetch('https://openrouter.ai/api/v1/auth/key', {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${openrouterApiKey}`
-          }
-        });
-        return response.ok;
-      } catch (error) {
-        console.error('OpenRouter API key validation failed:', error);
-        return false;
-      }
-    } else {
-      // Check if we have a valid Gemini API key
-      if (!geminiApiKey || geminiApiKey === 'your_gemini_api_key_here') {
-        console.error('Gemini API key is not configured or is set to the default value');
-        return false;
-      }
-      
-      // We can't easily validate a Gemini API key without making a full request
-      // For now, just return true if it's set to something other than the default
-      return true;
-    }
-  } catch (error) {
-    console.error('API status check failed:', error);
-    return false;
-  }
-};
-
-// Process images in smaller chunks to avoid API limits
-export const analyzeImagesInChunks = async (
-  images: ProcessedImage[], 
-  chunkSize: number = 20, // Default batch size of 20 images
-  provider?: ApiProvider,
-  progressCallback?: (progress: ProcessProgress) => void
-): Promise<AnalysisResult> => {
-  if (!provider) {
-    provider = useApiProviderStore.getState().currentProvider;
-  }
-  
-  // Initialize global statistics
-  const globalStats = {
-    totalImages: images.length,
-    totalBatches: Math.ceil(images.length / chunkSize),
-    successfulImages: 0,
-    failedImages: 0,
-    processingTimeMs: 0,
-    batchStats: [] as { 
-      batchNumber: number; 
-      imagesCount: number; 
-      successful: number; 
-      failed: number; 
-      timeMs: number; 
-    }[]
-  };
-
-  const globalStartTime = Date.now();
-  
-  // Check if API is available
-  const apiAvailable = await checkApiStatus(provider);
-  if (!apiAvailable) {
-    toast({
-      title: "API Error",
-      description: `The ${provider} API is currently unavailable. Please try again later or use a different API provider.`,
-      variant: "destructive",
-    });
-    return { success: false, metadata: [] };
-  }
-  
-  // Split images into batches
-  const batches: ProcessedImage[][] = [];
-  for (let i = 0; i < images.length; i += chunkSize) {
-    batches.push(images.slice(i, Math.min(i + chunkSize, images.length)));
-  }
-  
-  // Prepare output array for results
-  const results: (ImageMetadata | null)[] = new Array(images.length).fill(null);
-  
-  // Set up concurrency control for Gemini API
-  const maxConcurrentBatches = 5;
-  
-  // Define the batch processing function
-  const processBatch = async (batch: ProcessedImage[], batchIndex: number): Promise<void> => {
-    const batchStartTime = Date.now();
-    const batchStat = { 
-      batchNumber: batchIndex + 1, 
-      imagesCount: batch.length, 
-      successful: 0, 
-      failed: 0,
-      timeMs: 0
-    };
-    
-    try {
-      console.log(`Starting batch ${batchStat.batchNumber}/${globalStats.totalBatches} (${batch.length} images)...`);
-      const batchResult = await makeAnalysisRequest(batch, provider as ApiProvider);
-      
-      if (batchResult.success && batchResult.metadata.length > 0) {
-        // Map results back to their original positions
-        const startIndex = batchIndex * chunkSize;
-        batchResult.metadata.forEach((metadata, metadataIndex) => {
-          if (startIndex + metadataIndex < results.length) {
-            // Add fileName to metadata
-            metadata.fileName = batch[metadataIndex].fileName;
-            results[startIndex + metadataIndex] = metadata;
-            batchStat.successful++;
-          }
-        });
-        
-        // If partial success (not all images in batch succeeded)
-        if (batchResult.metadata.length < batch.length) {
-          batchStat.failed = batch.length - batchResult.metadata.length;
-        }
-      } else {
-        // If batch completely failed, fall back to individual processing
-        console.log(`Batch ${batchStat.batchNumber} processing failed, falling back to individual processing...`);
-        
-        // Process individual images in parallel with a smaller concurrency limit
-        const individualConcurrencyLimit = 3;
-        const individualPromises: Promise<void>[] = [];
-        
-        for (let j = 0; j < batch.length; j++) {
-          const processIndividual = async () => {
-            try {
-              const singleResult = await makeAnalysisRequest([batch[j]], provider as ApiProvider);
-              if (singleResult.success && singleResult.metadata.length > 0) {
-                const index = batchIndex * chunkSize + j;
-                if (index < results.length) {
-                  // Add fileName to metadata
-                  singleResult.metadata[0].fileName = batch[j].fileName;
-                  results[index] = singleResult.metadata[0];
-                  batchStat.successful++;
-                }
-              } else {
-                batchStat.failed++;
-              }
-            } catch (error) {
-              console.error(`Error processing individual image in batch ${batchStat.batchNumber}:`, error);
-              batchStat.failed++;
-            }
-          };
-          
-          individualPromises.push(processIndividual());
-          
-          // Limit concurrency for individual processing
-          if (individualPromises.length >= individualConcurrencyLimit) {
-            await Promise.all(individualPromises);
-            individualPromises.length = 0;
-          }
-        }
-        
-        // Wait for any remaining individual processing
-        if (individualPromises.length > 0) {
-          await Promise.all(individualPromises);
-        }
-      }
-    } catch (error) {
-      console.error(`Error processing batch ${batchStat.batchNumber}:`, error);
-      batchStat.failed = batch.length;
-    }
-    
-    // Calculate batch processing time
-    batchStat.timeMs = Date.now() - batchStartTime;
-    console.log(`Completed batch ${batchStat.batchNumber}/${globalStats.totalBatches}: ${batchStat.successful}/${batchStat.imagesCount} successful in ${(batchStat.timeMs / 1000).toFixed(2)}s`);
-    
-    // Update global stats with this batch's info
-    globalStats.batchStats.push(batchStat);
-    
-    // Update global success/failure counts
-    globalStats.successfulImages += batchStat.successful;
-    globalStats.failedImages += batchStat.failed;
-    
-    // Call progress callback if provided
-    if (progressCallback) {
-      progressCallback({
-        totalImages: globalStats.totalImages,
-        processedImages: globalStats.successfulImages + globalStats.failedImages,
-        successfulImages: globalStats.successfulImages,
-        failedImages: globalStats.failedImages,
-        processingTimeMs: Date.now() - globalStartTime,
-        status: 'processing'
-      });
-    }
-  };
-  
-  console.log(`Processing all ${images.length} images with batch size ${chunkSize} (${globalStats.totalBatches} batches) using max ${maxConcurrentBatches} concurrent batches...`);
-  
-  // Process batches with controlled concurrency
-  for (let i = 0; i < batches.length; i += maxConcurrentBatches) {
-    const currentBatchPromises = batches
-      .slice(i, i + maxConcurrentBatches)
-      .map((batch, idx) => processBatch(batch, i + idx));
-    
-    await Promise.all(currentBatchPromises);
-  }
-  
-  // Calculate total processing time
-  globalStats.processingTimeMs = Date.now() - globalStartTime;
-  
-  // Filter out null values
-  const validResults = results.filter((item): item is ImageMetadata => item !== null);
-  
-  // Log comprehensive final statistics
-  console.log(`
-=================================================
-IMAGE PROCESSING COMPLETE - ${typeof provider === 'string' ? provider.toUpperCase() : String(provider).toUpperCase()} API
-=================================================
-📊 SUMMARY:
-• Total images processed: ${globalStats.totalImages}
-• Successfully processed: ${globalStats.successfulImages}
-• Failed: ${globalStats.failedImages}
-• Total batches: ${globalStats.totalBatches}
-• Total processing time: ${(globalStats.processingTimeMs / 1000).toFixed(2)}s
-• Average time per image: ${(globalStats.processingTimeMs / globalStats.totalImages).toFixed(2)}ms
-
-🔍 BATCH DETAILS:`);
-  
-  globalStats.batchStats.forEach(batch => {
-    console.log(`  • Batch ${batch.batchNumber}/${globalStats.totalBatches}: ${batch.successful}/${batch.imagesCount} successful (${(batch.timeMs / 1000).toFixed(2)}s)`);
-  });
-  
-  console.log(`=================================================`);
-
-  // Final progress callback with completed status
-  if (progressCallback) {
-    progressCallback({
-      totalImages: globalStats.totalImages,
-      processedImages: globalStats.totalImages,
-      successfulImages: globalStats.successfulImages,
-      failedImages: globalStats.failedImages,
-      processingTimeMs: globalStats.processingTimeMs,
-      status: 'completed'
-    });
-  }
-  
-  return {
-    success: globalStats.successfulImages > 0,
-    metadata: validResults
-  };
-};
-
-// Main public API for analyzing images
-export const analyzeImages = async (
-  images: ProcessedImage[],
-  provider?: ApiProvider | ((progress: ProcessProgress) => void)
-): Promise<AnalysisResult> => {
-  let progressCallback: ((progress: ProcessProgress) => void) | undefined;
-  
-  // Check if provider is actually a progress callback
-  if (typeof provider === 'function') {
-    progressCallback = provider;
-    provider = undefined;
-  }
-  
-  if (!provider) {
-    provider = useApiProviderStore.getState().currentProvider;
-  }
-
-  try {
-    if (images.length === 0) {
-      return { success: false, metadata: [] };
-    }
-
-    console.log(`Analyzing ${images.length} images using ${provider} API...`);
-    
-    const apiAvailable = await checkApiStatus(provider);
-    if (!apiAvailable) {
-      const alternativeProvider: ApiProvider = provider === 'gemini' ? 'openrouter' : 'gemini';
-      const alternativeApiAvailable = await checkApiStatus(alternativeProvider);
-      
-      if (alternativeApiAvailable) {
-        toast({
-          title: `${provider.charAt(0).toUpperCase() + provider.slice(1)} API Key Invalid`,
-          description: `Automatically switching to ${alternativeProvider} API. Please update your API key in the .env file.`,
-          variant: "destructive",
-        });
-        
-        useApiProviderStore.getState().setProvider(alternativeProvider);
-        provider = alternativeProvider;
-      } else {
-        toast({
-          title: "API Error",
-          description: "Both API keys are invalid. Please update your API keys in the .env file.",
-          variant: "destructive",
-        });
-        return { success: false, metadata: [] };
-      }
-    }
-    
-    const chunkSize = provider === 'gemini' ? 20 : 20; 
-    return await analyzeImagesInChunks(images, chunkSize, provider, progressCallback);
-  } catch (error) {
-    console.error('Image analysis failed:', error);
-    return { success: false, metadata: [] };
-  }
-};
-
-// Make API calls based on the selected provider
+// Make API calls using OpenRouter
 const makeAnalysisRequest = async (
-  images: ProcessedImage[],
-  provider: ApiProvider
-): Promise<AnalysisResult> => {
-  if (provider === 'gemini') {
-    return makeGeminiRequest(images);
-  } else {
-    return makeOpenRouterRequest(images);
-  }
-};
-
-// Make request to Google Gemini API
-const makeGeminiRequest = async (
   images: ProcessedImage[]
-): Promise<AnalysisResult> => {
-  const result = await retryWithBackoff<AnalysisResult>(async () => {
-    try {
-      const imageParts = images.map(img => ({
-        inlineData: {
-          data: img.base64Data,
-          mimeType: img.mimeType
-        }
-      }));
-
-      // Set a reasonable timeout for the API call
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
-      
-      try {
-        const result = await geminiModel.generateContent([
-          { text: systemPrompt },
-          ...imageParts
-        ]);
-        
-        clearTimeout(timeoutId);
-        
-        const response = await result.response;
-        const text = response.text();
-        console.log('Raw response text:', text);
-
-        const cleanedText = extractJsonFromResponse(text);
-        console.log('Cleaned response:', cleanedText);
-
-        let parsedData: unknown;
-        try {
-          parsedData = JSON.parse(cleanedText);
-        } catch (error) {
-          throw new Error(`Failed to parse JSON response: ${error instanceof Error ? error.message : String(error)}`);
-        }
-        
-        const dataToProcess = Array.isArray(parsedData) ? parsedData : [parsedData];
-
-        const validatedData = dataToProcess.map((item, index) => {
-          const { isValid, errors } = validateMetadata(item as Partial<ImageMetadata>, index);
-          if (!isValid) {
-            console.error(`Invalid metadata for item ${index}:`, errors);
-            return null;
-          }
-          return item as ImageMetadata;
-        });
-
-        const filteredData = validatedData.filter((item): item is ImageMetadata => item !== null);
-
-        return {
-          success: filteredData.length > 0,
-          metadata: filteredData
-        };
-      } finally {
-        clearTimeout(timeoutId);
-      }
-    } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error('Gemini API request timed out after 60 seconds');
-      }
-      console.error('Gemini API error:', error);
-      throw error;
-    }
-  }, 3, 2000);
-
-  return result;
+): Promise<{ success: boolean; metadata: MetadataResult[] }> => {
+  try {
+    console.log(`🔥 MAKING ACTUAL API REQUEST with ${images.length} images...`);
+    return await makeOpenRouterRequest(images);
+  } catch (error) {
+    console.error('API request failed:', error);
+    return {
+      success: false,
+      metadata: []
+    };
+  }
 };
 
 // Make request to OpenRouter API
 const makeOpenRouterRequest = async (
   images: ProcessedImage[]
 ): Promise<AnalysisResult> => {
+  console.log('🌟 Starting OpenRouter API request with images:', images.map(img => img.fileName));
+
   interface OpenRouterRequestBody {
     model: string;
     messages: {
@@ -552,6 +205,18 @@ const makeOpenRouterRequest = async (
         | { type: "image_url"; image_url: { url: string } }
       )[];
     }[];
+  }
+
+  // Validate images have required properties
+  for (const img of images) {
+    if (!img.base64Data) {
+      console.error(`Missing base64Data for image: ${img.fileName}`);
+      throw new Error(`Image ${img.fileName} is missing base64Data required for API request`);
+    }
+    if (!img.mimeType) {
+      console.error(`Missing mimeType for image: ${img.fileName}`);
+      throw new Error(`Image ${img.fileName} is missing mimeType required for API request`);
+    }
   }
 
   const requestBody: OpenRouterRequestBody = {
@@ -564,19 +229,35 @@ const makeOpenRouterRequest = async (
             type: "text",
             text: systemPrompt
           },
-          ...images.map(img => ({
-            type: "image_url" as const,
-            image_url: {
-              url: `data:${img.mimeType};base64,${img.base64Data}`
+          ...images.map(img => {
+            try {
+              return {
+                type: "image_url" as const,
+                image_url: {
+                  url: `data:${img.mimeType};base64,${img.base64Data}`
+                }
+              };
+            } catch (error) {
+              console.error(`Error creating image URL for ${img.fileName}:`, error);
+              throw new Error(`Failed to prepare image ${img.fileName} for API request: ${error instanceof Error ? error.message : String(error)}`);
             }
-          }))
+          })
         ]
       }
     ]
   };
 
+  console.log('🔥 OPENROUTER REQUEST PREPARED:', {
+    model: requestBody.model,
+    imageCount: images.length,
+    messageCount: requestBody.messages.length,
+    contentItems: requestBody.messages[0].content.length
+  });
+
   const result = await retryWithBackoff<AnalysisResult>(async () => {
     try {
+      console.log(`🔥 SENDING REQUEST TO OPENROUTER API WITH ${images.length} IMAGES...`);
+      
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -602,47 +283,418 @@ const makeOpenRouterRequest = async (
       }
 
       const data: OpenRouterResponse = await response.json();
-      console.log('Raw API Response:', data);
+      console.log('🔥 RAW API RESPONSE:', data);
 
       if (!data.choices?.[0]?.message?.content) {
         throw new Error('Invalid response structure: Missing content in API response');
       }
 
       const text = data.choices[0].message.content;
-      console.log('Raw response text:', text);
+      console.log('🔥 API RESPONSE TEXT:', text);
 
-      const cleanedText = extractJsonFromResponse(text);
-      console.log('Cleaned response:', cleanedText);
-
-      let parsedData: unknown;
       try {
-        parsedData = JSON.parse(cleanedText);
-      } catch (error) {
-        throw new Error(`Failed to parse JSON response: ${error instanceof Error ? error.message : String(error)}`);
-      }
-      
-      const dataToProcess = Array.isArray(parsedData) ? parsedData : [parsedData];
+        const cleanedText = extractJsonFromResponse(text);
+        console.log('🔥 CLEANED JSON:', cleanedText);
 
-      const validatedData = dataToProcess.map((item, index) => {
-        const { isValid, errors } = validateMetadata(item as Partial<ImageMetadata>, index);
-        if (!isValid) {
-          console.error(`Invalid metadata for item ${index}:`, errors);
-          return null;
+        let parsedData: unknown;
+        try {
+          parsedData = JSON.parse(cleanedText);
+        } catch (error) {
+          console.error('JSON parsing error. Raw text:', text);
+          console.error('Cleaned text:', cleanedText);
+          throw new Error(`Failed to parse JSON response: ${error instanceof Error ? error.message : String(error)}`);
         }
-        return item as ImageMetadata;
-      });
+        
+        const dataToProcess = Array.isArray(parsedData) ? parsedData : [parsedData];
+        console.log(`🔥 PROCESSING ${dataToProcess.length} ITEMS FROM RESPONSE FOR ${images.length} INPUT IMAGES`);
 
-      const filteredData = validatedData.filter((item): item is ImageMetadata => item !== null);
+        // Log any mismatch between input and output counts
+        if (dataToProcess.length !== images.length) {
+          console.warn(`⚠️ MISMATCH BETWEEN INPUT IMAGES (${images.length}) AND RESPONSE ITEMS (${dataToProcess.length})`);
+          console.log('Input images:', images.map(img => img.fileName));
+          console.log('Response data count:', dataToProcess.length);
+        }
 
-      return {
-        success: filteredData.length > 0,
-        metadata: filteredData
-      };
+        // Validate and map metadata 
+        // If we have fewer results than images, we need to handle the distribution of metadata
+        let validatedData: MetadataResult[] = [];
+        
+        if (dataToProcess.length < images.length) {
+          // Case: API returned fewer metadata items than images sent
+          // For each metadata item from API response
+          dataToProcess.forEach((item, dataIndex) => {
+            // Validate the data
+            const validation = validateMetadata(item, dataIndex);
+            
+            if (!validation.isValid) {
+              console.error(`Invalid metadata for item ${dataIndex}:`, validation.errors);
+              return; // Skip invalid metadata
+            }
+            
+            // Get base metadata
+            const baseMetadata = validation.metadata;
+            if (!baseMetadata) return;
+            
+            // Identify which images this metadata could apply to
+            // Extract key patterns from the metadata to match with image filenames
+            const metadataTitle = baseMetadata.title?.toLowerCase() || '';
+            const keyTerms = metadataTitle.split(' ')
+              .filter(term => term.length > 3) // Only use significant words
+              .map(term => term.toLowerCase());
+              
+            // Find images that match these key terms
+            const matchingImages = images.filter(img => {
+              const fileName = img.fileName.toLowerCase();
+              // Check if image name contains any of the key terms
+              return keyTerms.some(term => fileName.includes(term));
+            });
+            
+            if (matchingImages.length > 0) {
+              // Add metadata for each matching image
+              matchingImages.forEach(img => {
+                validatedData.push({
+                  ...baseMetadata,
+                  fileName: img.fileName
+                });
+              });
+            } else {
+              // If no match found, assign to the corresponding image by index
+              const imgIndex = Math.min(dataIndex, images.length - 1);
+              validatedData.push({
+                ...baseMetadata,
+                fileName: images[imgIndex].fileName
+              });
+            }
+          });
+          
+          // Handle any remaining unmatched images
+          const matchedFiles = validatedData.map(d => d.fileName);
+          const unmatchedImages = images.filter(img => !matchedFiles.includes(img.fileName));
+          
+          if (unmatchedImages.length > 0 && validatedData.length > 0) {
+            // For each unmatched image, duplicate the first successful metadata
+            const templateMetadata = validatedData[0];
+            unmatchedImages.forEach(img => {
+              validatedData.push({
+                ...templateMetadata,
+                fileName: img.fileName,
+                // Add a note that this is a duplicated metadata
+                description: `${templateMetadata.description} (Similar to other analyzed images)` 
+              });
+            });
+          }
+        } else {
+          // Normal case: Direct 1:1 mapping between metadata and images
+          validatedData = dataToProcess.map((item, index) => {
+            const validation = validateMetadata(item, index);
+            if (!validation.isValid) {
+              console.error(`Invalid metadata for item ${index}:`, validation.errors);
+              return {
+                title: item?.title || 'Unknown',
+                description: item?.description || 'No description available',
+                keywords: Array.isArray(item?.keywords) ? item.keywords : [],
+                category: 'Other' as ImageCategory,
+                fileName: images[index]?.fileName || `unknown-${index}.jpg`,
+                success: false,
+                error: validation.errors
+              } as MetadataResult;
+            }
+            
+            // If we have more results than images, handle gracefully
+            const imageIndex = Math.min(index, images.length - 1);
+            return {
+              ...validation.metadata,
+              fileName: images[imageIndex].fileName
+            };
+          });
+        }
+
+        return {
+          success: validatedData.some(item => item.success),
+          metadata: validatedData
+        };
+      } catch (error) {
+        console.error('Error processing API response:', error);
+        throw error;
+      }
     } catch (error) {
       console.error('OpenRouter API error:', error);
       throw error;
     }
-  });
+  }, 3);
 
   return result;
 };
+
+// Process a single batch of images
+const processBatch = async (
+  images: ProcessedImage[],
+  batchIndex: number
+): Promise<{ success: boolean; metadata: MetadataResult[] }> => {
+  try {
+    console.log(`Starting batch ${batchIndex + 1} processing with ${images.length} images`);
+    
+    // Call the API directly
+    const result = await makeAnalysisRequest(images);
+    
+    // Log results
+    if (result.success) {
+      console.log(`Batch ${batchIndex + 1} processing succeeded with ${result.metadata.length} results`);
+      
+      // Validate each metadata item
+      const validatedMetadata: MetadataResult[] = [];
+      
+      for (const metadata of result.metadata) {
+        const validation = validateMetadata(metadata);
+        
+        if (validation.isValid) {
+          validatedMetadata.push(metadata);
+          globalStats.successfulImages++;
+        } else {
+          console.warn(`Invalid metadata for ${metadata.fileName}:`, validation.errors);
+          globalStats.failedImages++;
+        }
+      }
+      
+      // Update global stats
+      globalStats.totalImages += images.length;
+      
+      return {
+        success: true,
+        metadata: validatedMetadata
+      };
+    } else {
+      console.error(`Batch ${batchIndex + 1} processing failed with API error`);
+      globalStats.failedImages += images.length;
+      globalStats.totalImages += images.length;
+      
+      return {
+        success: false,
+        metadata: []
+      };
+    }
+  } catch (error) {
+    console.error(`Error in batch ${batchIndex + 1} processing:`, error);
+    globalStats.failedImages += images.length;
+    globalStats.totalImages += images.length;
+    
+    return {
+      success: false,
+      metadata: []
+    };
+  }
+};
+
+// Analyze images in chunks
+const analyzeImagesInChunks = async (
+  images: (File | ProcessedImage)[],
+  sessionId?: string,
+  progressCallback?: (info: ProgressInfo) => void
+): Promise<{ success: boolean; metadata: MetadataResult[] }> => {
+  // Constants for batch processing
+  const MAX_BATCH_SIZE = 3;
+  const MAX_CONCURRENT_BATCHES = 1;
+  
+  const totalImages = images.length;
+  let processedCount = 0;
+  let successCount = 0;
+  let failureCount = 0;
+  let allMetadata: MetadataResult[] = [];
+  let totalProcessingTime = 0;
+  
+  // Create batches
+  const batches: ProcessedImage[][] = [];
+  const processedImages: ProcessedImage[] = [];
+  
+  // Process images into a standard format if needed
+  for (const img of images) {
+    if ('base64Data' in img) {
+      processedImages.push(img);
+    } else {
+      // For raw files, compress them first (would need implementation)
+      console.warn('Raw File handling not implemented');
+    }
+  }
+  
+  // Create batches of appropriate size
+  for (let i = 0; i < processedImages.length; i += MAX_BATCH_SIZE) {
+    batches.push(processedImages.slice(i, i + MAX_BATCH_SIZE));
+  }
+  
+  console.log(`Created ${batches.length} batches with max size ${MAX_BATCH_SIZE}`);
+  
+  // Process batches with controlled concurrency
+  const allResults: { batch: number; results: MetadataResult[] }[] = [];
+  const errors: BatchError[] = [];
+  
+  // Process batches sequentially (to control rate limits)
+  for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+    const batch = batches[batchIndex];
+    console.log(`Processing batch ${batchIndex + 1}/${batches.length} with ${batch.length} images`);
+    
+    try {
+      const batchStartTime = Date.now();
+      
+      // Process this batch using API
+      const result = await processBatch(batch, batchIndex);
+      const batchProcessingTime = Date.now() - batchStartTime;
+      
+      // Record batch results
+      if (result.success && result.metadata.length > 0) {
+        console.log(`Batch ${batchIndex + 1} processed successfully with ${result.metadata.length} results`);
+        allResults.push({ batch: batchIndex, results: result.metadata });
+        successCount += result.metadata.length;
+      } else {
+        console.error(`Batch ${batchIndex + 1} failed with no results`);
+        // Record individual failures for each image in batch
+        batch.forEach(img => {
+          errors.push({
+            fileName: img.fileName,
+            error: 'Batch processing failed',
+            processingTime: 0
+          });
+        });
+        failureCount += batch.length;
+      }
+      
+      // Update processed count and processing time
+      processedCount += batch.length;
+      totalProcessingTime += batchProcessingTime;
+      
+      // Update progress callback
+      if (progressCallback) {
+        progressCallback({
+          totalImages,
+          processedImages: processedCount,
+          successfulImages: successCount,
+          failedImages: failureCount,
+          processingTimeMs: totalProcessingTime,
+          currentBatch: batchIndex + 1,
+          totalBatches: batches.length,
+          status: batchIndex < batches.length - 1 ? 'processing' : 'completed'
+        });
+      }
+      
+      // Brief pause between batches to avoid rate limiting
+      if (batchIndex < batches.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    } catch (error) {
+      console.error(`Error processing batch ${batchIndex + 1}:`, error);
+      
+      // Record failures for this batch
+      batch.forEach(img => {
+        errors.push({
+          fileName: img.fileName,
+          error: error instanceof Error ? error.message : 'Unknown batch error',
+          processingTime: 0
+        });
+      });
+      
+      failureCount += batch.length;
+      processedCount += batch.length;
+      
+      // Update progress
+      if (progressCallback) {
+        progressCallback({
+          totalImages,
+          processedImages: processedCount,
+          successfulImages: successCount,
+          failedImages: failureCount,
+          processingTimeMs: totalProcessingTime,
+          currentBatch: batchIndex + 1,
+          totalBatches: batches.length,
+          status: batchIndex < batches.length - 1 ? 'processing' : 'completed'
+        });
+      }
+    }
+  }
+  
+  // Combine all results
+  allResults.forEach(batchResult => {
+    allMetadata = [...allMetadata, ...batchResult.results];
+  });
+  
+  // Update session stats if session exists
+  if (sessionId) {
+    await updateSessionStats(sessionId, successCount, failureCount, successCount);
+  }
+  
+  // Return combined results
+  const overallSuccess = successCount > 0;
+  return {
+    success: overallSuccess,
+    metadata: allMetadata
+  };
+};
+
+// Check API status
+const checkApiStatus = async (): Promise<boolean> => {
+  // Always using OpenRouter, so just check if the key exists
+  return !!openrouterApiKey;
+};
+
+// Process batch of images
+export const analyzeImages = async (
+  images: (File | ProcessedImage)[],
+  progressCallback?: (info: ProgressInfo) => void
+): Promise<{ success: boolean; metadata: MetadataResult[] }> => {
+  try {
+    const sessionId: string | null = null; // Use const instead of let
+    
+    resetGlobalStats();
+    
+    // Check if user has enough credits
+    const hasEnoughCredits = await checkCredits(images.length);
+    
+    if (!hasEnoughCredits) {
+      toast({
+        title: "Insufficient Credits",
+        description: `You need at least ${images.length} credits to process these images. Failed images won't consume credits.`,
+        variant: "destructive",
+      });
+      return { success: false, metadata: [] };
+    }
+
+    // Create a processing session
+    const sessionName = `Batch ${new Date().toLocaleString()}`;
+    const newSessionId = await createProcessingSession(sessionName);
+    
+    console.log(`Analyzing ${images.length} images using OpenRouter API...`);
+    
+    const apiAvailable = await checkApiStatus();
+    if (!apiAvailable) {
+      toast({
+        title: "API Error",
+        description: "API key is invalid or not available. Please check your configuration.",
+        variant: "destructive",
+      });
+      return { success: false, metadata: [] };
+    }
+
+    const result = await analyzeImagesInChunks(
+      images,
+      newSessionId, // Pass the newly created session ID
+      progressCallback
+    );
+
+    // Deduct credits for successfully processed images
+    if (result.success) {
+      const creditsToDeduct = globalStats.successfulImages;
+      if (creditsToDeduct > 0) {
+        await deductCredits(creditsToDeduct);
+      }
+    }
+
+    return result;
+  } catch (error) {
+    console.error('Analysis error:', error);
+    return { success: false, metadata: [] };
+  }
+};
+
+// Simple interface definition for API response
+interface AnalysisResult {
+  success: boolean;
+  metadata: MetadataResult[];
+}

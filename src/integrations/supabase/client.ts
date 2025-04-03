@@ -8,4 +8,27 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+const isDevelopment = import.meta.env.DEV;
+const SITE_URL = isDevelopment 
+  ? 'http://localhost:5174'  // Local development
+  : 'https://pixelkeywording.com'; // Production
+
+console.log('Current environment:', isDevelopment ? 'Development' : 'Production');
+console.log('Site URL:', SITE_URL);
+
+// Function to get the current origin, handling both development and production
+const getCurrentOrigin = () => {
+  if (typeof window === 'undefined') return SITE_URL;
+  return window.location.origin;
+};
+
+// Create Supabase client with auth logging disabled
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    flowType: 'pkce',
+    debug: false // Disable auth debug logging
+  }
+});

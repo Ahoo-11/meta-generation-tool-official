@@ -1,10 +1,20 @@
-
 import { Auth } from '@supabase/auth-ui-react'
 import { ThemeSupa } from '@supabase/auth-ui-shared'
 import { supabase } from '@/integrations/supabase/client'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from '@/hooks/use-toast'
+
+const isDevelopment = import.meta.env.DEV;
+const SITE_URL = isDevelopment 
+  ? 'http://localhost:5173'
+  : 'https://pixelkeywording.com';
+
+// Function to get the current origin, handling both development and production
+const getCurrentOrigin = () => {
+  if (typeof window === 'undefined') return SITE_URL;
+  return window.location.origin;
+};
 
 const AuthPage = () => {
   const navigate = useNavigate()
@@ -20,6 +30,11 @@ const AuthPage = () => {
         }
       } catch (error) {
         console.error('Session check error:', error)
+        toast({
+          title: "Error",
+          description: "Failed to check session. Please try again.",
+          variant: "destructive"
+        })
       } finally {
         setIsLoading(false)
       }
@@ -66,7 +81,11 @@ const AuthPage = () => {
   }, [navigate, toast])
 
   if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      </div>
+    )
   }
 
   return (
@@ -75,6 +94,9 @@ const AuthPage = () => {
         <div className="text-center">
           <h1 className="text-4xl font-bold">Welcome</h1>
           <p className="text-muted-foreground mt-2">Sign in to get started</p>
+          {isDevelopment && (
+            <p className="text-sm text-muted-foreground mt-1">Development Mode: {getCurrentOrigin()}</p>
+          )}
         </div>
         
         <Auth
@@ -85,21 +107,49 @@ const AuthPage = () => {
               button: { background: 'white', color: 'black' },
               anchor: { color: 'gray' },
               divider: { background: 'gray' },
-              message: { color: 'gray' }
+              message: { color: 'white' },
+              input: { 
+                backgroundColor: 'rgb(30, 30, 30)',
+                borderColor: 'rgb(64, 64, 64)',
+                color: 'white'
+              },
+              label: { color: 'white' }
+            },
+            variables: {
+              default: {
+                colors: {
+                  brand: 'white',
+                  brandAccent: 'rgb(64, 64, 64)',
+                  inputBackground: 'rgb(30, 30, 30)',
+                  inputBorder: 'rgb(64, 64, 64)',
+                  inputText: 'white',
+                  inputPlaceholder: 'rgb(156, 163, 175)'
+                }
+              }
             }
           }}
-          theme="default"
+          theme="dark"
           providers={['google']}
-          redirectTo={window.location.origin}
+          redirectTo={`${getCurrentOrigin()}/auth/callback`}
+          socialLayout="horizontal"
           magicLink={false}
           view="sign_in"
+          showLinks={true}
           localization={{
             variables: {
               sign_in: {
                 email_label: 'Email',
                 password_label: 'Password',
                 button_label: 'Sign in',
-                loading_button_label: 'Signing in...',
+                link_text: 'Already have an account? Sign in',
+                password_input_placeholder: 'Your password',
+                email_input_placeholder: 'Your email address'
+              },
+              forgotten_password: {
+                email_label: 'Email address',
+                button_label: 'Send reset instructions',
+                link_text: 'Forgot your password?',
+                confirmation_text: 'Check your email for the password reset link'
               }
             }
           }}

@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState } from "react"
 import { supabase } from "@/integrations/supabase/client"
 
@@ -23,7 +22,7 @@ const ThemeProviderContext = createContext<ThemeProviderState>(initialState)
 
 export function ThemeProvider({
   children,
-  defaultTheme = "system",
+  defaultTheme = "dark",
   ...props
 }: ThemeProviderProps) {
   const [theme, setTheme] = useState<Theme>(
@@ -40,6 +39,16 @@ export function ThemeProvider({
         ? "dark"
         : "light"
       root.classList.add(systemTheme)
+      
+      // Listen for changes in system theme preference
+      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)")
+      const handleChange = (e: MediaQueryListEvent) => {
+        root.classList.remove("light", "dark")
+        root.classList.add(e.matches ? "dark" : "light")
+      }
+      
+      mediaQuery.addEventListener("change", handleChange)
+      return () => mediaQuery.removeEventListener("change", handleChange)
     } else {
       root.classList.add(theme)
     }
@@ -48,12 +57,16 @@ export function ThemeProvider({
     
     // Update theme preference in Supabase
     const updateThemePreference = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        await supabase
-          .from('profiles')
-          .update({ theme_preference: theme })
-          .eq('id', user.id)
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          await supabase
+            .from('profiles')
+            .update({ theme_preference: theme })
+            .eq('id', user.id)
+        }
+      } catch (error) {
+        console.error("Failed to update theme preference:", error)
       }
     }
     

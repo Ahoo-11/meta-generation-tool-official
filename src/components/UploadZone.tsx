@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -6,7 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useSession } from '@supabase/auth-helpers-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { UploadProgress } from './UploadProgress';
-import { analyzeImages } from '@/services/geminiService';
+import { analyzeImages } from '@/services/imageAnalysisService';
 
 interface UploadProgress {
   total: number;
@@ -65,11 +64,8 @@ export function UploadZone() {
 
         const base64Data = await base64Promise;
         
-        // Process with Gemini
-        const result = await analyzeImages([{
-          base64Data: base64Data as string,
-          mimeType: file.type
-        }]);
+        // Process with OpenRouter
+        const result = await analyzeImages([file]);
 
         // Store image info in localStorage
         const storedImages = JSON.parse(localStorage.getItem('userImages') || '[]');

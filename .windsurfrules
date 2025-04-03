@@ -1,1 +1,25 @@
 Only use google/gemini-flash-1.5-8b. do not change the model with any api providers.
+Do not update any file to change any existing rules without asking.
+
+I have connected this app to pixelkeywording.com domain and hosted it on netlify.
+Supabase details:
+Access token:
+Project ID: alywdwwqrtddplqsbksd
+URL: https://alywdwwqrtddplqsbksd.supabase.co
+Public annon key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFseXdkd3dxcnRkZHBscXNia3NkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQwMjQyNTIsImV4cCI6MjA0OTYwMDI1Mn0.kiuDTgrGVi4rbZ3XYSIfqTTsiNUCvByDo5aDuXkwsZQ
+Database password: CIg1cvIjsDQiYfPu
+
+the exact command that helps you connect to supabase:
+$env:SUPABASE_ACCESS_TOKEN="sbp_cbaf3163ea9feb6968f301cedbbeb63b755fb957"; supabase link --project-ref alywdwwqrtddplqsbksd
+
+Supabase CLI Rules:
+• Always set SUPABASE_ACCESS_TOKEN before running any command
+• Never use direct database connection, use access token instead
+• Migration files must have unique timestamps to avoid conflicts, and should be named properly in a way we know the files purpose.
+• Use --include-all flag when pushing multiple migrations
+• Check if tables exist before trying to alter them
+• Run migration list to verify successful migrations
+• Create tables before adding foreign key constraints
+• Migration files should be sequential and never share timestamps
+• Always repair migrations before pulling new database state
+• Check migration list after pushing to confirm success

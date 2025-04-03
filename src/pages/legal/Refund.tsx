@@ -33,11 +33,18 @@ const Refund = () => {
               <li>Credits refresh monthly</li>
             </ul>
 
-            <h3 className="text-xl font-semibold mt-4">Unlimited Plan ($30/month)</h3>
+            <h3 className="text-xl font-semibold mt-4">Unlimited Plan (subject to fair usage) ($30/month)</h3>
             <ul className="list-disc pl-6 mt-2 space-y-2">
-              <li>Unlimited processing</li>
+              <li>Unlimited monthly processing (10,000 processes per day limit)</li>
+              <li>Fair usage limits apply:</li>
+              <ul className="list-disc pl-6 mt-2 space-y-2">
+                <li>Up to 50 concurrent requests</li>
+                <li>Maximum file size: 100MB per image, 500MB per video</li>
+                <li>Reasonable processing intervals (minimum 1 second between requests)</li>
+              </ul>
               <li>All features included</li>
-              <li>Subject to fair usage policy</li>
+              <li>Automated rate limiting applies when limits are exceeded</li>
+              <li>Account suspension may occur for consistent policy violations</li>
             </ul>
 
             <h3 className="text-xl font-semibold mt-4">Additional Credits</h3>

@@ -2,7 +2,6 @@ import { validateImageFile, compressImage } from '@/utils/imageUtils';
 import { analyzeImages, AnalysisResult } from './imageAnalysisService';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { ApiProvider } from '@/config/apiConfig';
 
 interface ProcessProgress {
   totalImages: number;
@@ -109,6 +108,9 @@ export const addCredits = async (amount: number, description: string = 'Developm
     console.error('Error adding credits:', error);
     return false;
   }
+
+  // After successful addition, refresh the profile
+  await refreshProfile();
 
   return data;
 };
