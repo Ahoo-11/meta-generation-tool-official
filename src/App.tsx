@@ -16,6 +16,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { AppSidebar } from "@/components/layout/AppSidebar"
 import { HistoryTab } from "@/components/history/HistoryTab"
 import { StatsTab } from "@/components/stats/StatsTab"
+import { useProfileStore } from "@/stores/profileStore"
 
 // Simple Settings placeholder component
 const SettingsPlaceholder = () => (
@@ -32,6 +33,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const supabase = useSupabaseClient()
   const [isLoading, setIsLoading] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const { initializeProfile, profile } = useProfileStore()
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -56,6 +58,8 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
             setIsAuthenticated(false)
           } else {
             console.log('Valid user session found:', user.email)
+            // Initialize the user profile
+            await initializeProfile()
             setIsAuthenticated(true)
           }
         } else {
@@ -79,6 +83,8 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
           setIsAuthenticated(false)
         } else {
           console.log('Auth state changed, valid user:', user.email)
+          // Initialize the user profile on auth state change
+          await initializeProfile()
           setIsAuthenticated(true)
         }
       } else {
@@ -92,7 +98,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return () => {
       subscription.unsubscribe()
     }
-  }, [supabase.auth])
+  }, [supabase.auth, initializeProfile])
 
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>
@@ -100,6 +106,13 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   if (!isAuthenticated) {
     return <Navigate to="/auth" replace />
+  }
+
+  // Additional check to ensure profile is loaded
+  if (!profile) {
+    console.log('Profile not loaded yet, initializing...')
+    initializeProfile()
+    return <div className="min-h-screen flex items-center justify-center">Loading profile...</div>
   }
 
   return (

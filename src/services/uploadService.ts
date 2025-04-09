@@ -3,6 +3,7 @@ import { analyzeImages } from './imageAnalysisService';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { MetadataResult } from '@/types';
+import { Profile } from '@/stores/profileStore';
 
 // Define the AnalysisResult interface locally if it's not exported from imageAnalysisService
 interface AnalysisResult {
@@ -107,21 +108,28 @@ export const checkCredits = async (requiredCredits: number): Promise<boolean> =>
 };
 
 // Utility function to refresh profile
-export const refreshProfile = async (): Promise<void> => {
+export const refreshProfile = async (): Promise<Profile | null> => {
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return;
+  if (!user) return null;
 
   // Refresh the profile in the store
-  const { data: profile } = await supabase
+  const { data: profile, error } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', user.id)
     .single();
 
-  if (profile) {
-    // If you have a profile store, update it here
-    // profileStore.setProfile(profile);
+  if (error) {
+    console.error('Error fetching profile:', error);
+    return null;
   }
+
+  if (profile) {
+    console.log('Profile refreshed:', profile);
+    return profile;
+  }
+  
+  return null;
 };
 
 // Function to deduct credits from a user's account
