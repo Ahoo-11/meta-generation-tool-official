@@ -36,12 +36,7 @@ const Refund = () => {
             <h3 className="text-xl font-semibold mt-4">Unlimited Plan (subject to fair usage) ($30/month)</h3>
             <ul className="list-disc pl-6 mt-2 space-y-2">
               <li>Unlimited monthly processing (10,000 processes per day limit)</li>
-              <li>Fair usage limits apply:</li>
-              <ul className="list-disc pl-6 mt-2 space-y-2">
-                <li>Up to 50 concurrent requests</li>
-                <li>Maximum file size: 100MB per image, 500MB per video</li>
-                <li>Reasonable processing intervals (minimum 1 second between requests)</li>
-              </ul>
+              <li>Fair usage policy applies to prevent abuse of the service</li>
               <li>All features included</li>
               <li>Automated rate limiting applies when limits are exceeded</li>
               <li>Account suspension may occur for consistent policy violations</li>
@@ -50,6 +45,7 @@ const Refund = () => {
             <h3 className="text-xl font-semibold mt-4">Additional Credits</h3>
             <ul className="list-disc pl-6 mt-2 space-y-2">
               <li>$5 for 1,000 credits</li>
+              <li>Available to all users (Free, Basic, and Unlimited plans)</li>
               <li>No expiration</li>
             </ul>
           </section>
@@ -58,9 +54,20 @@ const Refund = () => {
             <h2 className="text-2xl font-semibold mb-4">2. Credit System</h2>
             <ul className="list-disc pl-6 space-y-2">
               <li>1 credit = 1 image or video process</li>
-              <li>Credits refresh at the start of each billing cycle  </li>
+              <li>Credits refresh at the start of each billing cycle  </li>
               <li>Supports common image formats (JPEG, PNG) and video (MP4)</li>
               <li>No rollover of unused credits</li>
+              <li>Anonymous, aggregated keyword statistics may be collected to provide trending features</li>
+            </ul>
+            
+            <h3 className="text-xl font-semibold mt-4">When Credits Are Depleted</h3>
+            <ul className="list-disc pl-6 space-y-2">
+              <li>Users are notified when their credits are running low or have been depleted</li>
+              <li>All users (Free, Basic, and Unlimited plans) can purchase additional permanent credits at $5 per 1,000 credits</li>
+              <li>Additional purchased credits never expire as long as the account remains active</li>
+              <li>Users can wait for their monthly credit refresh at the start of their next billing cycle</li>
+              <li>Users can upgrade to a higher-tier plan for more monthly credits</li>
+              <li>Processing is paused until more credits are available</li>
             </ul>
           </section>
 

@@ -169,10 +169,11 @@ const LandingPage = () => {
               </thead>
               <tbody>
                 {[
-                  { feature: "Monthly Credits", free: "150", basic: "5,000", unlimited: "Unlimited (subject to fair usage)" },
+                  { feature: "Monthly Credits", free: "150", basic: "5,000 + 150 free credits", unlimited: "Unlimited (subject to fair usage)" },
                   { feature: "Video Processing", free: "❌", basic: "✅", unlimited: "✅" },
                   { feature: "Bulk Processing", free: "✅", basic: "✅", unlimited: "✅" },
                   { feature: "Priority Support", free: "❌", basic: "✅", unlimited: "✅" },
+                  { feature: "Additional Credits", free: "$5 for 1,000 credits (never expire)", basic: "$5 for 1,000 credits (never expire)", unlimited: "$5 for 1,000 credits (never expire)" },
                   { feature: "Price", free: "Free", basic: "$20/mo", unlimited: "$30/mo" }
                 ].map((row, i) => (
                   <tr key={i} className="border-b">
@@ -182,14 +183,43 @@ const LandingPage = () => {
                     <td className="p-4 text-center">{row.unlimited}</td>
                   </tr>
                 ))}
+                <tr>
+                  <td className="p-4">Action</td>
+                  <td className="p-4 text-center">
+                    <Button onClick={handleGetStarted} size="sm">Get Started</Button>
+                  </td>
+                  <td className="p-4 text-center">
+                    <Button disabled size="sm">Coming Soon</Button>
+                  </td>
+                  <td className="p-4 text-center">
+                    <Button disabled size="sm">Coming Soon</Button>
+                  </td>
+                </tr>
               </tbody>
             </table>
+          </div>
+
+          <div className="mt-8 text-center">
+            <div className="inline-block bg-card rounded-lg border p-6 max-w-xl">
+              <h3 className="text-xl font-semibold mb-2">Need More Credits?</h3>
+              <p className="text-muted-foreground mb-4">Purchase additional credits that never expire and can be used anytime.</p>
+              <div className="bg-muted/50 p-4 rounded-md mb-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <span className="font-medium">1,000 Additional Credits</span>
+                    <p className="text-sm text-muted-foreground">No expiration date</p>
+                  </div>
+                  <span className="text-xl font-bold">$5</span>
+                </div>
+              </div>
+              <Button disabled className="w-full">Coming Soon</Button>
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="py-20 px-4" id="testimonials">
-        <div className="max-w-7xl mx-auto">
+      <section className="py-20 px-4">
+        <div className="max-w-3xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold mb-4">What Our Users Say</h2>
             <p className="text-muted-foreground">Join thousands of satisfied customers</p>
@@ -355,7 +385,7 @@ const LandingPage = () => {
             </div>
           </div>
           <div className="mt-12 pt-8 border-t text-center text-sm text-muted-foreground">
-            <p>© {new Date().getFullYear()} Pixel Keywording. All rights reserved.</p>
+            <p> {new Date().getFullYear()} Pixel Keywording. All rights reserved.</p>
           </div>
         </div>
       </footer>
