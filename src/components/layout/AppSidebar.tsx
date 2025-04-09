@@ -195,6 +195,17 @@ export function AppSidebar() {
 
         <CreditDisplay profile={profile} />
 
+        <div className="mx-3 mb-4">
+          <Button 
+            variant="outline" 
+            className="w-full flex items-center justify-center gap-2 border-primary/30 hover:bg-primary/10"
+            onClick={() => navigate('/app/purchase-credits')}
+          >
+            <CreditCard className="h-4 w-4 text-primary" />
+            <span>Purchase Credits</span>
+          </Button>
+        </div>
+
         <div className="border-t border-border/40">
           <div className="px-6 py-4">
             <div className="flex items-center gap-3 mb-4">

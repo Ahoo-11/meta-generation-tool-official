@@ -9,6 +9,7 @@ import LandingPage from "./pages/landing"
 import Terms from "./pages/legal/Terms"
 import Privacy from "./pages/legal/Privacy"
 import Refund from "./pages/legal/Refund"
+import PurchaseCredits from "./pages/PurchaseCredits"
 import { useSession, useSupabaseClient } from '@supabase/auth-helpers-react'
 import { useEffect, useState } from "react"
 import { ThemeProvider } from "@/components/ThemeProvider";
@@ -98,6 +99,7 @@ function App() {
                   <Route path="history" element={<HistoryTab />} />
                   <Route path="stats" element={<StatsTab />} />
                   <Route path="settings" element={<SettingsPlaceholder />} />
+                  <Route path="purchase-credits" element={<PurchaseCredits />} />
                 </Routes>
               </ProtectedRoute>
             </TooltipProvider>
