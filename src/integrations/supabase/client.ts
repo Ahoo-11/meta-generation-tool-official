@@ -31,6 +31,32 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     autoRefreshToken: true,
     detectSessionInUrl: true,
     flowType: 'pkce',
+    storageKey: 'pixelkeywording-auth-token',
+    storage: {
+      getItem: (key) => {
+        try {
+          const storedSession = globalThis?.localStorage?.getItem(key);
+          return storedSession;
+        } catch (error) {
+          console.error('Error getting auth session from storage:', error);
+          return null;
+        }
+      },
+      setItem: (key, value) => {
+        try {
+          globalThis?.localStorage?.setItem(key, value);
+        } catch (error) {
+          console.error('Error setting auth session to storage:', error);
+        }
+      },
+      removeItem: (key) => {
+        try {
+          globalThis?.localStorage?.removeItem(key);
+        } catch (error) {
+          console.error('Error removing auth session from storage:', error);
+        }
+      },
+    },
     debug: false // Disable auth debug logging
   }
 });

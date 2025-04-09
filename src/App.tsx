@@ -36,8 +36,31 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession()
-        setIsAuthenticated(!!session)
+        const { data: { session }, error } = await supabase.auth.getSession()
+        
+        if (error) {
+          console.error('Auth session error:', error)
+          setIsAuthenticated(false)
+          setIsLoading(false)
+          return
+        }
+        
+        if (session) {
+          // Verify the user exists and is valid
+          const { data: { user }, error: userError } = await supabase.auth.getUser()
+          
+          if (userError || !user) {
+            console.error('User validation error:', userError)
+            // Invalid session, sign out
+            await supabase.auth.signOut()
+            setIsAuthenticated(false)
+          } else {
+            console.log('Valid user session found:', user.email)
+            setIsAuthenticated(true)
+          }
+        } else {
+          setIsAuthenticated(false)
+        }
       } catch (error) {
         console.error('Auth check error:', error)
         setIsAuthenticated(false)
@@ -46,8 +69,21 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       }
     }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setIsAuthenticated(!!session)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session) {
+        // Verify the user exists and is valid
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
+        
+        if (userError || !user) {
+          console.error('User validation error on auth state change:', userError)
+          setIsAuthenticated(false)
+        } else {
+          console.log('Auth state changed, valid user:', user.email)
+          setIsAuthenticated(true)
+        }
+      } else {
+        setIsAuthenticated(false)
+      }
       setIsLoading(false)
     })
 

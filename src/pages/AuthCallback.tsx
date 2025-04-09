@@ -10,21 +10,46 @@ const AuthCallback = () => {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession()
+        // Get the URL hash and query parameters
+        const hash = window.location.hash
+        const query = window.location.search
         
-        if (error) {
-          throw error
+        console.log('Auth callback URL:', window.location.href)
+        console.log('Hash:', hash, 'Query:', query)
+        
+        // Process the callback explicitly
+        if (hash || query) {
+          // The session should be automatically detected by Supabase
+          // Let's verify it worked by checking for a session
+          const { data: { session }, error } = await supabase.auth.getSession()
+          
+          if (error) {
+            console.error('Auth session error:', error)
+            throw error
+          }
+          
+          if (session) {
+            // Verify the user exists
+            const { data: { user }, error: userError } = await supabase.auth.getUser()
+            
+            if (userError || !user) {
+              console.error('User validation error:', userError)
+              throw new Error('Failed to validate user')
+            }
+            
+            console.log('Successfully authenticated user:', user.email)
+            toast({
+              title: "Success",
+              description: "Successfully authenticated!"
+            })
+            navigate('/app')
+            return
+          }
         }
-
-        if (session) {
-          toast({
-            title: "Success",
-            description: "Successfully authenticated!"
-          })
-          navigate('/app')
-        } else {
-          navigate('/auth')
-        }
+        
+        // If we get here, either there was no hash/query or the session wasn't found
+        console.warn('No session found in callback')
+        navigate('/auth')
       } catch (error) {
         console.error('Auth callback error:', error)
         toast({

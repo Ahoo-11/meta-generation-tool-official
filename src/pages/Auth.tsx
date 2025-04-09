@@ -30,9 +30,29 @@ const AuthPage = () => {
   useEffect(() => {
     const checkSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession()
+        const { data: { session }, error } = await supabase.auth.getSession()
+        
+        if (error) {
+          console.error('Session check error:', error)
+          throw error
+        }
+        
         if (session) {
+          // Verify the session is valid by getting the user
+          const { data: { user }, error: userError } = await supabase.auth.getUser()
+          
+          if (userError || !user) {
+            console.error('User validation error:', userError)
+            // Clear any invalid session
+            await supabase.auth.signOut()
+            setIsLoading(false)
+            return
+          }
+          
+          console.log('Valid session found, user:', user.email)
           navigate('/app')
+        } else {
+          setIsLoading(false)
         }
       } catch (error) {
         console.error('Session check error:', error)
@@ -41,7 +61,6 @@ const AuthPage = () => {
           description: "Failed to check session. Please try again.",
           variant: "destructive"
         })
-      } finally {
         setIsLoading(false)
       }
     }
@@ -50,6 +69,20 @@ const AuthPage = () => {
       console.log('Auth state changed:', event, session)
       
       if (event === 'SIGNED_IN' && session) {
+        // Verify the user exists
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
+        
+        if (userError || !user) {
+          console.error('User validation error after sign in:', userError)
+          toast({
+            title: "Error",
+            description: "Authentication failed. Please try again.",
+            variant: "destructive"
+          })
+          await supabase.auth.signOut()
+          return
+        }
+        
         toast({
           title: "Success",
           description: "Successfully signed in!"
