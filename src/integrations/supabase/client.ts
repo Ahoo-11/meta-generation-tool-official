@@ -19,6 +19,8 @@ console.log('Site URL:', SITE_URL);
 // Function to get the current origin, handling both development and production
 const getCurrentOrigin = () => {
   if (typeof window === 'undefined') return SITE_URL;
+  // Always return the main domain in production to avoid subdomain issues
+  if (!isDevelopment) return SITE_URL;
   return window.location.origin;
 };
 

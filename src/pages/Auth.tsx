@@ -10,6 +10,12 @@ const SITE_URL = isDevelopment
   ? 'http://localhost:5173'
   : 'https://pixelkeywording.com';
 
+// Function to get the correct redirect URL, always using the main domain in production
+const getRedirectUrl = () => {
+  if (isDevelopment) return `${window.location.origin}/auth/callback`;
+  return `${SITE_URL}/auth/callback`;
+};
+
 // Function to get the current origin, handling both development and production
 const getCurrentOrigin = () => {
   if (typeof window === 'undefined') return SITE_URL;
@@ -130,7 +136,7 @@ const AuthPage = () => {
           }}
           theme="dark"
           providers={['google']}
-          redirectTo={`${getCurrentOrigin()}/auth/callback`}
+          redirectTo={getRedirectUrl()}
           socialLayout="horizontal"
           magicLink={false}
           view="sign_in"
