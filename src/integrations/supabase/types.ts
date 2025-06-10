@@ -87,13 +87,65 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_history: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          error_code: string | null
+          error_message: string | null
+          id: string
+          metadata: Json | null
+          payment_id: string
+          profile_id: string
+          status: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency: string
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          payment_id: string
+          profile_id: string
+          status: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          payment_id?: string
+          profile_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_history_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
           created_at: string
           credits: number
+          customer_id: string | null
           email: string
           id: string
+          subscription_current_period_end: string | null
+          subscription_id: string | null
+          subscription_plan: string | null
+          subscription_status: string | null
           theme_preference: string | null
           updated_at: string
           username: string | null
@@ -102,8 +154,13 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           credits?: number
+          customer_id?: string | null
           email: string
           id: string
+          subscription_current_period_end?: string | null
+          subscription_id?: string | null
+          subscription_plan?: string | null
+          subscription_status?: string | null
           theme_preference?: string | null
           updated_at?: string
           username?: string | null
@@ -112,13 +169,65 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           credits?: number
+          customer_id?: string | null
           email?: string
           id?: string
+          subscription_current_period_end?: string | null
+          subscription_id?: string | null
+          subscription_plan?: string | null
+          subscription_status?: string | null
           theme_preference?: string | null
           updated_at?: string
           username?: string | null
         }
         Relationships: []
+      }
+      subscription_events: {
+        Row: {
+          amount: number | null
+          created_at: string
+          currency: string | null
+          event_type: string
+          id: string
+          metadata: Json | null
+          new_plan: string | null
+          previous_plan: string | null
+          profile_id: string
+          subscription_id: string
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string
+          currency?: string | null
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          new_plan?: string | null
+          previous_plan?: string | null
+          profile_id: string
+          subscription_id: string
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string
+          currency?: string | null
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          new_plan?: string | null
+          previous_plan?: string | null
+          profile_id?: string
+          subscription_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_events_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
       }
     }
     Views: {
@@ -140,6 +249,25 @@ export type Database = {
           description?: string
         }
         Returns: boolean
+      }
+      log_subscription_event: {
+        Args: {
+          p_profile_id: string
+          p_subscription_id: string
+          p_event_type: string
+          p_previous_plan?: string
+          p_new_plan?: string
+          p_metadata?: Json
+        }
+        Returns: undefined
+      }
+      manage_profile: {
+        Args: {
+          operation: string
+          profile_id: string
+          credits_amount?: number
+        }
+        Returns: undefined
       }
     }
     Enums: {

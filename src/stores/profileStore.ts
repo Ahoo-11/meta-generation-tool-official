@@ -11,6 +11,11 @@ export interface Profile {
   monthly_credits?: number;
   permanent_credits?: number;
   id?: string;
+  customer_id?: string;
+  subscription_id?: string;
+  billing_cycle_start?: number;
+  billing_cycle_end?: number;
+  payment_status?: 'active' | 'past_due' | 'canceled' | 'incomplete' | 'incomplete_expired' | 'trialing';
 }
 
 interface ProfileStore {
@@ -18,6 +23,7 @@ interface ProfileStore {
   isLoading: boolean;
   error: string | null;
   setProfile: (profile: Profile | null) => void;
+  updateProfile: (updates: Partial<Profile>) => Promise<Profile | null>;
   refreshProfile: () => Promise<void>;
   initializeProfile: () => Promise<void>;
 }
@@ -27,6 +33,41 @@ export const useProfileStore = create<ProfileStore>((set, get) => ({
   isLoading: false,
   error: null,
   setProfile: (profile) => set({ profile }),
+  updateProfile: async (updates) => {
+    set({ isLoading: true, error: null });
+    try {
+      const currentProfile = get().profile;
+      if (!currentProfile || !currentProfile.id) {
+        set({ isLoading: false, error: 'No profile to update' });
+        return null;
+      }
+
+      const { data: updatedProfile, error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', currentProfile.id)
+        .select('*')
+        .single();
+
+      if (error) {
+        console.error('Error updating profile:', error);
+        set({ isLoading: false, error: error.message });
+        return null;
+      }
+
+      if (updatedProfile) {
+        set({ profile: updatedProfile, isLoading: false });
+        return updatedProfile;
+      } else {
+        set({ isLoading: false, error: 'Failed to update profile' });
+        return null;
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      set({ isLoading: false, error: 'Error updating profile' });
+      return null;
+    }
+  },
   refreshProfile: async () => {
     set({ isLoading: true, error: null });
     try {

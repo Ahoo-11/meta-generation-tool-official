@@ -15,6 +15,7 @@ import {
   Settings,
   Sun,
   Moon,
+  CreditCardIcon,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -195,7 +196,7 @@ export function AppSidebar() {
 
         <CreditDisplay profile={profile} />
 
-        <div className="mx-3 mb-4">
+        <div className="mx-3 mb-4 space-y-2">
           <Button 
             variant="outline" 
             className="w-full flex items-center justify-center gap-2 border-primary/30 hover:bg-primary/10"
@@ -203,6 +204,15 @@ export function AppSidebar() {
           >
             <CreditCard className="h-4 w-4 text-primary" />
             <span>Purchase Credits</span>
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            className="w-full flex items-center justify-center gap-2 border-primary/30 hover:bg-primary/10"
+            onClick={() => navigate('/app/payment-test')}
+          >
+            <CreditCardIcon className="h-4 w-4 text-primary" />
+            <span>Payment Test</span>
           </Button>
         </div>
 

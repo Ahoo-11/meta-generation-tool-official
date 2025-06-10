@@ -8,13 +8,29 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-const isDevelopment = import.meta.env.DEV;
+const isDevelopment = process.env.NODE_ENV === 'development';
 const SITE_URL = isDevelopment 
   ? 'http://localhost:5174'  // Local development
   : 'https://pixelkeywording.com'; // Production
 
 console.log('Current environment:', isDevelopment ? 'Development' : 'Production');
 console.log('Site URL:', SITE_URL);
+
+// Clear any cached auth sessions with old URLs on startup
+if (typeof window !== 'undefined') {
+  const storedSession = localStorage.getItem('pixelkeywording-auth-token');
+  if (storedSession && storedSession.includes('aibdxsebwhalbnugsqel')) {
+    console.log('Clearing old auth session with outdated URL');
+    localStorage.removeItem('pixelkeywording-auth-token');
+    localStorage.removeItem('sb-aibdxsebwhalbnugsqel-auth-token');
+    // Clear any other potential auth keys
+    Object.keys(localStorage).forEach(key => {
+      if (key.includes('aibdxsebwhalbnugsqel') || key.includes('supabase')) {
+        localStorage.removeItem(key);
+      }
+    });
+  }
+}
 
 // Function to get the current origin, handling both development and production
 const getCurrentOrigin = () => {

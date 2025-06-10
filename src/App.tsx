@@ -10,6 +10,7 @@ import Terms from "./pages/legal/Terms"
 import Privacy from "./pages/legal/Privacy"
 import Refund from "./pages/legal/Refund"
 import PurchaseCredits from "./pages/PurchaseCredits"
+import DodoPaymentTest from "./pages/DodoPaymentTest"
 import { useSession, useSupabaseClient } from '@supabase/auth-helpers-react'
 import { useEffect, useState } from "react"
 import { ThemeProvider } from "@/components/ThemeProvider";
@@ -125,6 +126,97 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   )
 }
 
+// Simple protected route without sidebar for standalone test pages
+const SimpleProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const session = useSession()
+  const supabase = useSupabaseClient()
+  const [isLoading, setIsLoading] = useState(true)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const { initializeProfile, profile } = useProfileStore()
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession()
+        
+        if (error) {
+          console.error('Auth session error:', error)
+          setIsAuthenticated(false)
+          setIsLoading(false)
+          return
+        }
+        
+        if (session) {
+          // Verify the user exists and is valid
+          const { data: { user }, error: userError } = await supabase.auth.getUser()
+          
+          if (userError || !user) {
+            console.error('User validation error:', userError)
+            // Invalid session, sign out
+            await supabase.auth.signOut()
+            setIsAuthenticated(false)
+          } else {
+            console.log('Valid user session found:', user.email)
+            // Initialize the user profile
+            await initializeProfile()
+            setIsAuthenticated(true)
+          }
+        } else {
+          setIsAuthenticated(false)
+        }
+      } catch (error) {
+        console.error('Auth check error:', error)
+        setIsAuthenticated(false)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session) {
+        // Verify the user exists and is valid
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
+        
+        if (userError || !user) {
+          console.error('User validation error on auth state change:', userError)
+          setIsAuthenticated(false)
+        } else {
+          console.log('Auth state changed, valid user:', user.email)
+          // Initialize the user profile on auth state change
+          await initializeProfile()
+          setIsAuthenticated(true)
+        }
+      } else {
+        setIsAuthenticated(false)
+      }
+      setIsLoading(false)
+    })
+
+    checkAuth()
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [supabase.auth, initializeProfile])
+
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace />
+  }
+
+  // Additional check to ensure profile is loaded
+  if (!profile) {
+    console.log('Profile not loaded yet, initializing...')
+    initializeProfile()
+    return <div className="min-h-screen flex items-center justify-center">Loading profile...</div>
+  }
+
+  return <>{children}</>
+}
+
 function App() {
   return (
     <BrowserRouter>
@@ -149,8 +241,28 @@ function App() {
                   <Route path="stats" element={<StatsTab />} />
                   <Route path="settings" element={<SettingsPlaceholder />} />
                   <Route path="purchase-credits" element={<PurchaseCredits />} />
+                  <Route path="payment-test" element={<DodoPaymentTest />} />
                 </Routes>
               </ProtectedRoute>
+            </TooltipProvider>
+          </ThemeProvider>
+        } />
+        
+        {/* Direct test pages */}
+        <Route path="/payment-test-direct" element={
+          <ThemeProvider defaultTheme="dark" storageKey="pixel-keywording-theme-app">
+            <TooltipProvider>
+              <DodoPaymentTest />
+            </TooltipProvider>
+          </ThemeProvider>
+        } />
+        
+        <Route path="/dodo-test" element={
+          <ThemeProvider defaultTheme="dark" storageKey="pixel-keywording-theme-app">
+            <TooltipProvider>
+              <SimpleProtectedRoute>
+                <DodoPaymentTest />
+              </SimpleProtectedRoute>
             </TooltipProvider>
           </ThemeProvider>
         } />

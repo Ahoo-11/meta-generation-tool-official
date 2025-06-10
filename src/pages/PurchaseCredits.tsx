@@ -81,11 +81,17 @@ const PurchaseCredits = () => {
           <p className="text-xl text-muted-foreground mb-6">
             Additional credit purchases will be available shortly. Stay tuned!
           </p>
-          <div className="flex justify-center">
+          <div className="flex justify-center gap-4">
             <Link to="/app">
               <Button size="lg">
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Return to Dashboard
+              </Button>
+            </Link>
+            <Link to="/app/payment-test">
+              <Button size="lg" variant="outline">
+                <CreditCard className="h-4 w-4 mr-2" />
+                Test Payment Integration
               </Button>
             </Link>
           </div>

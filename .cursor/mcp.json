@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "dodopayments_api": {
+      "command": "npx",
+      "args": ["-y", "dodopayments-mcp", "--client=cursor"],
+      "env": {
+        "DODO_PAYMENTS_API_KEY": "Y5h-0edhftQ-_aWv.UDaLs-NfZ0DRsjzWCVZztJH_9xCF9UL7dHbe34fZZyDQd6Ij"
+      }
+    },
+    "supabase-project1": {
+      "command": "npx",
+      "args": ["@supabase/mcp-server-supabase@latest", "--access-token", "sbp_cbaf3163ea9feb6968f301cedbbeb63b755fb957", "--project-id", "alywdwwqrtddplqsbksd"],
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "sbp_cbaf3163ea9feb6968f301cedbbeb63b755fb957",
+        "SUPABASE_PROJECT_ID": "alywdwwqrtddplqsbksd"
+      }
+    }
+  }
+}

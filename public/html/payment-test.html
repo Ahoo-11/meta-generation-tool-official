@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dodo Payments Test</title>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    .container {
+      background-color: #f9f9f9;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-top: 10px;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    pre {
+      background-color: #f1f1f1;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    input, select {
+      padding: 8px;
+      margin: 5px 0;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+      width: 100%;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Dodo Payments API Test</h1>
+    
+    <div class="form-group">
+      <label for="amount">Amount (USD):</label>
+      <input type="number" id="amount" value="10" min="1" step="0.01">
+    </div>
+    
+    <div class="form-group">
+      <label for="email">Customer Email:</label>
+      <input type="email" id="email" value="test@example.com">
+    </div>
+    
+    <div class="form-group">
+      <label for="name">Customer Name:</label>
+      <input type="text" id="name" value="Test User">
+    </div>
+    
+    <button id="createCustomer">1. Create Customer</button>
+    <button id="createCheckout">2. Create Checkout Session</button>
+    
+    <h3>Response:</h3>
+    <pre id="response">No response yet</pre>
+  </div>
+
+  <script>
+    // Store customer ID from create customer response
+    let customerId = '';
+    
+    // Create customer button click handler
+    document.getElementById('createCustomer').addEventListener('click', async () => {
+      try {
+        const email = document.getElementById('email').value;
+        const name = document.getElementById('name').value;
+        
+        const response = await axios.post('/api/customers', {
+          email,
+          name
+        });
+        
+        customerId = response.data.id;
+        
+        document.getElementById('response').textContent = JSON.stringify(response.data, null, 2);
+        console.log('Customer created:', response.data);
+      } catch (error) {
+        document.getElementById('response').textContent = JSON.stringify(error.response?.data || error.message, null, 2);
+        console.error('Error creating customer:', error);
+      }
+    });
+    
+    // Create checkout session button click handler
+    document.getElementById('createCheckout').addEventListener('click', async () => {
+      try {
+        if (!customerId) {
+          document.getElementById('response').textContent = 'Please create a customer first';
+          return;
+        }
+        
+        const amount = parseFloat(document.getElementById('amount').value);
+        
+        const response = await axios.post('/api/payments/checkout', {
+          amount,
+          currency: 'USD',
+          customerId,
+          successUrl: window.location.origin + '/html/payment-test-redirect.html?success=true',
+          cancelUrl: window.location.origin + '/html/payment-test-redirect.html?success=false'
+        });
+        
+        document.getElementById('response').textContent = JSON.stringify(response.data, null, 2);
+        console.log('Checkout session created:', response.data);
+        
+        // Redirect to checkout URL
+        if (response.data.url || response.data.checkout_url) {
+          window.location.href = response.data.url || response.data.checkout_url;
+        }
+      } catch (error) {
+        document.getElementById('response').textContent = JSON.stringify(error.response?.data || error.message, null, 2);
+        console.error('Error creating checkout session:', error);
+      }
+    });
+  </script>
+</body>
+</html>

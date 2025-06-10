@@ -6,5 +6,10 @@ alwaysApply: false
 
 # Your rule content
 
-- you can never change the batch size of 20 images, and you can never assume its the issue and you can never suggest to change it.
-- You can never be lazy when doing analysis when you try to get to the root of issues, you should never assume things always check the codebase.
+
+
+I have connected this app to pixelkeywording.com domain and hosted it on netlify.
+Supabase details:
+- you have access to supabase(meta) mcp which have sql rewad ability, and since the mcp can't run sql, you need to provide the sql to me to run and i will run it for you.
+
+- We're setting payment for this app with dodo payments.

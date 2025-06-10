@@ -1,0 +1,1 @@
+- Do not use dodo payments mcp for payment integration.

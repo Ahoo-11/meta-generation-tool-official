@@ -3,6 +3,13 @@
   command = "npm run build"
   publish = "dist"
 
+# Handle Dodo Payments webhook
+[[redirects]]
+  from = "/api/webhooks/dodo-payments"
+  to = "/.netlify/functions/dodo-payments-webhook"
+  status = 200
+  force = true
+
 # Handle SPA routing
 [[redirects]]
   from = "/*"

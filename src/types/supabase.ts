@@ -129,6 +129,25 @@ export type Database = {
         };
         Returns: string;
       };
+      manage_profile: {
+        Args: {
+          operation: 'add_credits' | 'deduct_credits';
+          profile_id: string;
+          credits_amount: number;
+        };
+        Returns: void;
+      };
+      log_subscription_event: {
+        Args: {
+          p_profile_id: string;
+          p_subscription_id: string;
+          p_event_type: string;
+          p_previous_plan?: string;
+          p_new_plan?: string;
+          p_metadata?: Record<string, any>;
+        };
+        Returns: void;
+      };
     };
   };
 };

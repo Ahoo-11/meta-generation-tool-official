@@ -8,6 +8,8 @@ Project ID: alywdwwqrtddplqsbksd
 URL: https://alywdwwqrtddplqsbksd.supabase.co
 Public annon key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFseXdkd3dxcnRkZHBscXNia3NkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQwMjQyNTIsImV4cCI6MjA0OTYwMDI1Mn0.kiuDTgrGVi4rbZ3XYSIfqTTsiNUCvByDo5aDuXkwsZQ
 Database password: CIg1cvIjsDQiYfPu
+((mcp2_query (supabase-project1 / query) is the mcp of this project, always check supabase before providing any changes to it.
+
 
 the exact command that helps you connect to supabase:
 $env:SUPABASE_ACCESS_TOKEN="sbp_cbaf3163ea9feb6968f301cedbbeb63b755fb957"; supabase link --project-ref alywdwwqrtddplqsbksd
@@ -23,3 +25,8 @@ Supabase CLI Rules:
 • Migration files should be sequential and never share timestamps
 • Always repair migrations before pulling new database state
 • Check migration list after pushing to confirm success
+
+
+DO NOT FUCKING USE DODO PAYMENTS MCP IN THE APP.
+
+DO NOT EVER CREATE A MOCK. ALWAYS REAL IMPLEMTATIONS
